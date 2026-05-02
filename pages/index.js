@@ -10,7 +10,7 @@ const LIGHT = {
   text: '#1a1a2e',
   textMuted: '#777',
   textFaint: '#999',
-  headingGradient: 'linear-gradient(135deg, #1a1a2e 0%, #333 100%)',
+  headingColor: '#1a1a2e',
   cardBg: '#ffffff',
   cardBorder: '0.5px solid rgba(0,0,0,0.06)',
   cardHoverBg: 'rgba(0,0,0,0.01)',
@@ -75,7 +75,7 @@ const DARK = {
   text: '#e0e0e0',
   textMuted: '#888',
   textFaint: '#555',
-  headingGradient: 'linear-gradient(135deg, #e0e0e0 0%, #ffffff 50%, #a0a0c0 100%)',
+  headingColor: '#f0f0f0',
   cardBg: 'rgba(255,255,255,0.03)',
   cardBorder: '0.5px solid rgba(255,255,255,0.08)',
   cardHoverBg: 'rgba(255,255,255,0.02)',
@@ -323,9 +323,7 @@ export default function Dashboard() {
               </div>
               <h1 style={{
                 fontSize: 26, fontWeight: 700, margin: 0,
-                background: t.headingGradient,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: t.headingColor,
                 letterSpacing: '-0.02em',
               }}>Campaign Analytics</h1>
             </div>
