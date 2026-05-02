@@ -2,52 +2,22 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const GRADIENTS = [
-  'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-  'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-  'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
-];
+const CHART_COLORS = {
+  sent: '#4facfe',
+  opens: '#43e97b',
+  clicks: '#f093fb',
+  replies: '#667eea',
+  opportunities: '#fa709a',
+};
 
-const GLOWS = [
-  '0 0 20px rgba(102,126,234,0.3)',
-  '0 0 20px rgba(240,147,251,0.3)',
-  '0 0 20px rgba(79,172,254,0.3)',
-  '0 0 20px rgba(67,233,123,0.3)',
-  '0 0 20px rgba(250,112,154,0.3)',
-  '0 0 20px rgba(161,140,209,0.3)',
-];
-
-function StatusBadge({ status }) {
-  const map = {
-    1: ['Active', 'rgba(67,233,123,0.15)', '#43e97b'],
-    2: ['Paused', 'rgba(255,255,255,0.06)', '#888'],
-    0: ['Draft', 'rgba(255,255,255,0.06)', '#888'],
-    3: ['Completed', 'rgba(79,172,254,0.15)', '#4facfe'],
-  };
-  const [label, bg, color] = map[status] || ['Unknown', 'rgba(255,255,255,0.06)', '#888'];
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color,
-      background: bg, padding: '3px 10px', borderRadius: 999, fontWeight: 500,
-      border: `0.5px solid ${color}33`
-    }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />
-      {label}
-    </span>
-  );
-}
-
-function MetricCard({ label, value, sub, gradient, glow }) {
+function MetricCard({ label, value, sub, gradient }) {
   return (
     <div style={{
       background: 'rgba(255,255,255,0.03)',
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       borderRadius: 16,
-      padding: '20px 24px',
+      padding: '18px 24px',
       border: '0.5px solid rgba(255,255,255,0.08)',
       position: 'relative',
       overflow: 'hidden',
@@ -56,12 +26,9 @@ function MetricCard({ label, value, sub, gradient, glow }) {
         position: 'absolute', top: 0, left: 0, right: 0, height: 2,
         background: gradient,
       }} />
-      <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 500 }}>{label}</div>
-      <div style={{
-        fontSize: 32, fontWeight: 600, color: '#fff', letterSpacing: '-0.02em',
-        textShadow: glow,
-      }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontSize: 10, color: '#777', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 600, color: '#f0f0f0', letterSpacing: '-0.02em' }}>{value}</div>
+      {sub != null && <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }
@@ -76,6 +43,25 @@ function Shimmer() {
       height: 16,
       width: '100%',
     }} />
+  );
+}
+
+function ChartCard({ title, children }) {
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.02)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      border: '0.5px solid rgba(255,255,255,0.06)',
+      borderRadius: 16, padding: '1.5rem', marginBottom: '1.25rem',
+    }}>
+      <div style={{
+        fontSize: 12, fontWeight: 600, color: '#888',
+        textTransform: 'uppercase', letterSpacing: '0.08em',
+        marginBottom: 12,
+      }}>{title}</div>
+      {children}
+    </div>
   );
 }
 
@@ -107,27 +93,28 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const campaigns = data?.campaigns || [];
+  const stats = data?.stats;
   const daily = data?.daily || [];
-  const totSent = campaigns.reduce((a, c) => a + c.sent, 0);
-  const totReplies = campaigns.reduce((a, c) => a + c.replies, 0);
-  const totLeads = campaigns.reduce((a, c) => a + c.leads, 0);
-  const totOpp = campaigns.reduce((a, c) => a + c.opportunities, 0);
-  const replyRate = totSent > 0 ? (totReplies / totSent * 100).toFixed(1) : '0.0';
-  const maxSent = Math.max(...campaigns.map(c => c.sent), 1);
+  const campaignCount = data?.campaignCount || 0;
 
-  // Aggregate daily analytics across all campaigns
+  // Aggregate daily data for charts
   const dailyAggregated = useMemo(() => {
     const map = {};
     daily.forEach(d => {
-      if (!map[d.date]) map[d.date] = { date: d.date, sent: 0, opens: 0, replies: 0, opportunities: 0 };
+      if (!map[d.date]) {
+        map[d.date] = { date: d.date, sent: 0, opens: 0, clicks: 0, replies: 0, opportunities: 0 };
+      }
       map[d.date].sent += d.sent || 0;
       map[d.date].opens += d.unique_opened || 0;
+      map[d.date].clicks += d.unique_clicks || 0;
       map[d.date].replies += d.unique_replies || 0;
       map[d.date].opportunities += d.unique_opportunities || 0;
     });
     return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
   }, [daily]);
+
+  // Helper to format rates
+  const pct = (num, denom) => denom > 0 ? (num / denom * 100).toFixed(1) + '%' : '0.0%';
 
   const copyLink = () => {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -135,6 +122,8 @@ export default function Dashboard() {
       setTimeout(() => setCopied(false), 2000);
     });
   };
+
+  const fmt = (n) => n != null ? n.toLocaleString() : '0';
 
   return (
     <>
@@ -152,7 +141,7 @@ export default function Dashboard() {
         color: '#e0e0e0',
         padding: '2.5rem 1.5rem',
       }}>
-        <div style={{ maxWidth: 960, margin: '0 auto' }}>
+        <div style={{ maxWidth: 1024, margin: '0 auto' }}>
 
           {/* Header */}
           <div style={{
@@ -182,33 +171,36 @@ export default function Dashboard() {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 letterSpacing: '-0.02em',
-              }}>Active Campaigns</h1>
+              }}>Campaign Analytics</h1>
             </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(67,233,123,0.08)',
-              border: '0.5px solid rgba(67,233,123,0.15)',
-              borderRadius: 999, padding: '8px 16px',
-            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <span style={{ fontSize: 13, color: '#666' }}>{campaignCount} active {campaignCount === 1 ? 'campaign' : 'campaigns'}</span>
               <div style={{
-                width: 8, height: 8, borderRadius: '50%', background: '#43e97b',
-                boxShadow: '0 0 8px #43e97b', animation: 'pulse 2s infinite',
-              }} />
-              <span style={{ fontSize: 12, color: '#43e97b', fontWeight: 600 }}>Live</span>
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'rgba(67,233,123,0.08)',
+                border: '0.5px solid rgba(67,233,123,0.15)',
+                borderRadius: 999, padding: '8px 16px',
+              }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%', background: '#43e97b',
+                  boxShadow: '0 0 8px #43e97b', animation: 'pulse 2s infinite',
+                }} />
+                <span style={{ fontSize: 12, color: '#43e97b', fontWeight: 600 }}>Live</span>
+              </div>
             </div>
           </div>
 
-          {/* Loading skeleton */}
+          {/* Loading */}
           {loading && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: '1.5rem' }}>
-              {[1, 2, 3, 4].map(i => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: '1.5rem' }}>
+              {[1, 2, 3, 4, 5, 6].map(i => (
                 <div key={i} style={{
                   background: 'rgba(255,255,255,0.02)',
                   border: '0.5px solid rgba(255,255,255,0.06)',
                   borderRadius: 16, padding: '20px 24px',
                 }}>
                   <Shimmer />
-                  <div style={{ height: 12 }} />
+                  <div style={{ height: 8 }} />
                   <div style={{ width: '60%' }}><Shimmer /></div>
                 </div>
               ))}
@@ -220,15 +212,15 @@ export default function Dashboard() {
             <div style={{
               background: 'rgba(255,80,80,0.08)', border: '0.5px solid rgba(255,80,80,0.2)',
               borderRadius: 12, padding: '1rem 1.25rem', color: '#ff6b6b', fontSize: 13,
-              marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: 10
+              marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: 10,
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               {error}. Check that INSTANTLY_API_KEY is set.
             </div>
           )}
 
-          {/* Empty state */}
-          {!loading && !error && campaigns.length === 0 && (
+          {/* Empty */}
+          {!loading && !error && !stats && (
             <div style={{ textAlign: 'center', padding: '5rem 2rem' }}>
               <div style={{
                 width: 64, height: 64, borderRadius: 20, margin: '0 auto 1.5rem',
@@ -240,56 +232,89 @@ export default function Dashboard() {
                 </svg>
               </div>
               <div style={{ fontSize: 16, fontWeight: 600, color: '#999', marginBottom: 6 }}>No active campaigns</div>
-              <div style={{ fontSize: 13, color: '#555' }}>Launch a campaign in Instantly to see it here.</div>
+              <div style={{ fontSize: 13, color: '#555' }}>Launch a campaign in Instantly to see analytics here.</div>
             </div>
           )}
 
-          {!loading && campaigns.length > 0 && (
+          {!loading && stats && (
             <>
-              {/* Summary metrics */}
+              {/* Sending Metrics */}
               <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: 12, marginBottom: '1.5rem',
+                fontSize: 11, fontWeight: 600, color: '#555',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                marginBottom: 10, marginTop: 0,
+              }}>Sending</div>
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: 10, marginBottom: '1.5rem',
               }}>
-                <MetricCard label="Total Leads" value={totLeads.toLocaleString()} sub="Across active campaigns" gradient={GRADIENTS[0]} glow={GLOWS[0]} />
-                <MetricCard label="Emails Sent" value={totSent.toLocaleString()} sub="All time" gradient={GRADIENTS[1]} glow={GLOWS[1]} />
-                <MetricCard label="Total Replies" value={totReplies} sub={`${replyRate}% reply rate`} gradient={GRADIENTS[2]} glow={GLOWS[2]} />
-                <MetricCard label="Opportunities" value={totOpp} sub="In pipeline" gradient={GRADIENTS[3]} glow={GLOWS[3]} />
+                <MetricCard label="Emails Sent" value={fmt(stats.emailsSent)} sub={`${fmt(stats.contacted)} contacted`} gradient="linear-gradient(135deg, #667eea, #764ba2)" />
+                <MetricCard label="New Leads" value={fmt(stats.newLeadsContacted)} gradient="linear-gradient(135deg, #4facfe, #00f2fe)" />
+                <MetricCard label="Completed" value={fmt(stats.completed)} sub={stats.emailsSent > 0 ? pct(stats.completed, stats.emailsSent) + ' of sent' : null} gradient="linear-gradient(135deg, #43e97b, #38f9d7)" />
+                <MetricCard label="Bounced" value={fmt(stats.bounced)} sub={stats.emailsSent > 0 ? pct(stats.bounced, stats.emailsSent) + ' bounce rate' : null} gradient="linear-gradient(135deg, #fa709a, #fee140)" />
+                <MetricCard label="Unsubscribed" value={fmt(stats.unsubscribed)} gradient="linear-gradient(135deg, #f093fb, #f5576c)" />
               </div>
 
-              {/* Daily trends chart */}
+              {/* Engagement Metrics */}
+              <div style={{
+                fontSize: 11, fontWeight: 600, color: '#555',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                marginBottom: 10,
+              }}>Engagement</div>
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: 10, marginBottom: '1.5rem',
+              }}>
+                <MetricCard label="Opens (Total)" value={fmt(stats.openCount)} sub={stats.emailsSent > 0 ? pct(stats.openUnique, stats.emailsSent) + ' unique rate' : null} gradient="linear-gradient(135deg, #43e97b, #38f9d7)" />
+                <MetricCard label="Unique Opens" value={fmt(stats.openUnique)} gradient="linear-gradient(135deg, #667eea, #764ba2)" />
+                <MetricCard label="Clicks (Total)" value={fmt(stats.clickCount)} sub={stats.emailsSent > 0 ? pct(stats.clickUnique, stats.emailsSent) + ' unique rate' : null} gradient="linear-gradient(135deg, #f093fb, #f5576c)" />
+                <MetricCard label="Unique Clicks" value={fmt(stats.clickUnique)} gradient="linear-gradient(135deg, #4facfe, #00f2fe)" />
+              </div>
+
+              {/* Response Metrics */}
+              <div style={{
+                fontSize: 11, fontWeight: 600, color: '#555',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                marginBottom: 10,
+              }}>Responses</div>
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: 10, marginBottom: '1.5rem',
+              }}>
+                <MetricCard label="Total Replies" value={fmt(stats.replyCount)} sub={stats.emailsSent > 0 ? pct(stats.replyUnique, stats.emailsSent) + ' unique rate' : null} gradient="linear-gradient(135deg, #667eea, #764ba2)" />
+                <MetricCard label="Unique Replies" value={fmt(stats.replyUnique)} gradient="linear-gradient(135deg, #43e97b, #38f9d7)" />
+                <MetricCard label="Auto Replies" value={fmt(stats.replyAutomatic)} sub={stats.replyAutomaticUnique != null ? fmt(stats.replyAutomaticUnique) + ' unique' : null} gradient="linear-gradient(135deg, #fa709a, #fee140)" />
+              </div>
+
+              {/* Pipeline Metrics */}
+              <div style={{
+                fontSize: 11, fontWeight: 600, color: '#555',
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                marginBottom: 10,
+              }}>Pipeline</div>
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: 10, marginBottom: '1.5rem',
+              }}>
+                <MetricCard label="Opportunities" value={fmt(stats.opportunities)} sub={stats.opportunityValue > 0 ? '$' + fmt(stats.opportunityValue) + ' value' : null} gradient="linear-gradient(135deg, #43e97b, #38f9d7)" />
+                <MetricCard label="Interested" value={fmt(stats.interested)} gradient="linear-gradient(135deg, #4facfe, #00f2fe)" />
+                <MetricCard label="Meetings Booked" value={fmt(stats.meetingsBooked)} gradient="linear-gradient(135deg, #667eea, #764ba2)" />
+                <MetricCard label="Meetings Done" value={fmt(stats.meetingsCompleted)} gradient="linear-gradient(135deg, #f093fb, #f5576c)" />
+                <MetricCard label="Closed" value={fmt(stats.closed)} gradient="linear-gradient(135deg, #fa709a, #fee140)" />
+              </div>
+
+              {/* Chart 1 — Sending & Engagement (daily) */}
               {dailyAggregated.length > 0 && (
-                <div style={{
-                  background: 'rgba(255,255,255,0.02)',
-                  backdropFilter: 'blur(20px)',
-                  WebkitBackdropFilter: 'blur(20px)',
-                  border: '0.5px solid rgba(255,255,255,0.06)',
-                  borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem',
-                }}>
-                  <div style={{
-                    fontSize: 12, fontWeight: 600, color: '#888',
-                    textTransform: 'uppercase', letterSpacing: '0.08em',
-                    marginBottom: 8,
-                  }}>Daily Trends · Last 30 Days</div>
-                  <ResponsiveContainer width="100%" height={320}>
+                <ChartCard title="Daily Activity · Last 30 Days">
+                  <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={dailyAggregated} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
                       <defs>
-                        <linearGradient id="fillSent" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#4facfe" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#4facfe" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="fillOpens" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#43e97b" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#43e97b" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="fillReplies" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#667eea" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#667eea" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="fillOpps" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#f093fb" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#f093fb" stopOpacity={0} />
-                        </linearGradient>
+                        {Object.entries(CHART_COLORS).map(([key, color]) => (
+                          <linearGradient key={key} id={`fill_${key}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+                            <stop offset="100%" stopColor={color} stopOpacity={0} />
+                          </linearGradient>
+                        ))}
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                       <XAxis
@@ -303,12 +328,7 @@ export default function Dashboard() {
                         }}
                         interval="preserveStartEnd"
                       />
-                      <YAxis
-                        tick={{ fontSize: 11, fill: '#555' }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={50}
-                      />
+                      <YAxis tick={{ fontSize: 11, fill: '#555' }} tickLine={false} axisLine={false} width={48} />
                       <Tooltip
                         contentStyle={{
                           background: '#1a1a24',
@@ -323,214 +343,85 @@ export default function Dashboard() {
                           return d.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
                         }}
                       />
-                      <Legend
-                        wrapperStyle={{ fontSize: 12, color: '#888', paddingTop: 12 }}
-                        iconType="plainline"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="sent"
-                        name="Emails Sent"
-                        stroke="#4facfe"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4, fill: '#4facfe', stroke: '#fff', strokeWidth: 2 }}
-                        fill="url(#fillSent)"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="opens"
-                        name="Opens"
-                        stroke="#43e97b"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4, fill: '#43e97b', stroke: '#fff', strokeWidth: 2 }}
-                        fill="url(#fillOpens)"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="replies"
-                        name="Replies"
-                        stroke="#667eea"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4, fill: '#667eea', stroke: '#fff', strokeWidth: 2 }}
-                        fill="url(#fillReplies)"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="opportunities"
-                        name="Opportunities"
-                        stroke="#f093fb"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4, fill: '#f093fb', stroke: '#fff', strokeWidth: 2 }}
-                        fill="url(#fillOpps)"
-                      />
+                      <Legend wrapperStyle={{ fontSize: 12, color: '#888', paddingTop: 10 }} iconType="plainline" />
+                      {[
+                        { key: 'sent', name: 'Sent', color: CHART_COLORS.sent },
+                        { key: 'opens', name: 'Unique Opens', color: CHART_COLORS.opens },
+                        { key: 'clicks', name: 'Unique Clicks', color: CHART_COLORS.clicks },
+                        { key: 'replies', name: 'Unique Replies', color: CHART_COLORS.replies },
+                        { key: 'opportunities', name: 'Opportunities', color: CHART_COLORS.opportunities },
+                      ].map(s => (
+                        <Line
+                          key={s.key}
+                          type="monotone"
+                          dataKey={s.key}
+                          name={s.name}
+                          stroke={s.color}
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 4, fill: s.color, stroke: '#fff', strokeWidth: 2 }}
+                          fill={`url(#fill_${s.key})`}
+                        />
+                      ))}
                     </LineChart>
                   </ResponsiveContainer>
-                </div>
+                </ChartCard>
               )}
 
-              {/* Campaign cards */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: 14, marginBottom: '1.5rem',
-              }}>
-                {campaigns.map((c, i) => {
-                  const gradient = GRADIENTS[i % GRADIENTS.length];
-                  const glow = GLOWS[i % GLOWS.length];
-                  const rr = c.sent > 0 ? (c.replies / c.sent * 100).toFixed(1) : '0.0';
-                  return (
-                    <div key={c.id} style={{
-                      background: 'rgba(255,255,255,0.02)',
-                      backdropFilter: 'blur(20px)',
-                      WebkitBackdropFilter: 'blur(20px)',
-                      border: '0.5px solid rgba(255,255,255,0.06)',
-                      borderRadius: 16,
-                      padding: '1.5rem',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      transition: 'transform 0.2s, box-shadow 0.2s',
-                      cursor: 'default',
-                    }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = glow;
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      <div style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-                        background: gradient,
-                      }} />
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        alignItems: 'flex-start', marginBottom: 16,
-                      }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, flex: 1, marginRight: 8, color: '#ddd' }}>{c.name}</div>
-                        <StatusBadge status={c.status} />
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
-                        {[
-                          ['Leads', c.leads.toLocaleString()],
-                          ['Sent', c.sent.toLocaleString()],
-                          ['Replies', c.replies],
-                          ['Bounced', c.bounced],
-                        ].map(([k, v]) => (
-                          <div key={k}>
-                            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2, fontWeight: 500 }}>{k}</div>
-                            <div style={{ fontSize: 20, fontWeight: 600, color: '#eee' }}>{v}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#666', marginBottom: 6 }}>
-                          <span>Send progress</span>
-                          <span style={{
-                            background: `rgba(255,255,255,0.04)`,
-                            padding: '2px 8px', borderRadius: 999, fontSize: 11,
-                            color: '#aaa', fontWeight: 500,
-                          }}>{rr}% replies</span>
-                        </div>
-                        <div style={{
-                          background: 'rgba(255,255,255,0.06)',
-                          borderRadius: 999, height: 5, width: '100%', overflow: 'hidden',
-                        }}>
-                          <div style={{
-                            height: 5, borderRadius: 999,
-                            background: gradient,
-                            width: `${maxSent > 0 ? Math.round((c.sent / maxSent) * 100) : 0}%`,
-                            transition: 'width 0.6s ease',
-                          }} />
-                        </div>
-                      </div>
-                      {c.opportunities > 0 && (
-                        <div style={{
-                          marginTop: 14, borderRadius: 8, padding: '8px 12px',
-                          background: 'rgba(67,233,123,0.06)',
-                          border: '0.5px solid rgba(67,233,123,0.1)',
-                          fontSize: 12, color: '#43e97b',
-                          display: 'flex', justifyContent: 'space-between',
-                          fontWeight: 500,
-                        }}>
-                          <span>Opportunities</span>
-                          <span>{c.opportunities}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Detailed table */}
-              <div style={{
-                background: 'rgba(255,255,255,0.02)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                border: '0.5px solid rgba(255,255,255,0.06)',
-                borderRadius: 16, padding: '1.5rem', marginBottom: '1.5rem',
-                overflowX: 'auto',
-              }}>
-                <div style={{
-                  fontSize: 12, fontWeight: 600, color: '#888',
-                  textTransform: 'uppercase', letterSpacing: '0.08em',
-                  marginBottom: 16,
-                }}>Campaign Breakdown</div>
-                <table style={{
-                  width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600,
-                }}>
-                  <thead>
-                    <tr>
-                      {['Campaign', 'Leads', 'Sent', 'Contacted', 'Replies', 'Reply %', 'Bounced', 'Opp.'].map(h => (
-                        <th key={h} style={{
-                          textAlign: 'left', padding: '10px 8px',
-                          borderBottom: '0.5px solid rgba(255,255,255,0.06)',
-                          fontSize: 10, color: '#555', fontWeight: 600,
-                          textTransform: 'uppercase', letterSpacing: '0.06em',
-                        }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {campaigns.map((c, i) => {
-                      const gradient = GRADIENTS[i % GRADIENTS.length];
-                      const rr = c.sent > 0 ? (c.replies / c.sent * 100).toFixed(1) : '0.0';
-                      return (
-                        <tr key={c.id} style={{
-                          transition: 'background 0.15s',
+              {/* Chart 2 — Pipeline funnel (daily) */}
+              {dailyAggregated.length > 0 && (
+                <ChartCard title="Pipeline Activity · Last 30 Days">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={dailyAggregated} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11, fill: '#555' }}
+                        tickLine={false}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                        tickFormatter={v => {
+                          const d = new Date(v + 'T00:00:00');
+                          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                         }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <td style={{ padding: '12px 8px', borderBottom: '0.5px solid rgba(255,255,255,0.04)', fontWeight: 600 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <div style={{
-                                width: 8, height: 8, borderRadius: 3,
-                                background: gradient, flexShrink: 0,
-                              }} />
-                              <span style={{ fontSize: 13, color: '#ccc' }}>{c.name}</span>
-                            </div>
-                          </td>
-                          {[c.leads.toLocaleString(), c.sent.toLocaleString(), c.contacted.toLocaleString(), c.replies, `${rr}%`, c.bounced, c.opportunities].map((v, j) => (
-                            <td key={j} style={{
-                              padding: '12px 8px',
-                              borderBottom: '0.5px solid rgba(255,255,255,0.04)',
-                              color: '#999', fontSize: 13,
-                              fontFamily: j < 3 ? "'JetBrains Mono', monospace" : 'inherit',
-                            }}>{v}</td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis tick={{ fontSize: 11, fill: '#555' }} tickLine={false} axisLine={false} width={48} />
+                      <Tooltip
+                        contentStyle={{
+                          background: '#1a1a24',
+                          border: '0.5px solid rgba(255,255,255,0.1)',
+                          borderRadius: 10,
+                          fontSize: 12,
+                          color: '#ddd',
+                          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                        }}
+                        labelFormatter={v => {
+                          const d = new Date(v + 'T00:00:00');
+                          return d.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12, color: '#888', paddingTop: 10 }} iconType="plainline" />
+                      {[
+                        { key: 'replies', name: 'Replies', color: '#43e97b' },
+                        { key: 'opportunities', name: 'Opportunities', color: '#f093fb' },
+                      ].map(s => (
+                        <Line
+                          key={s.key}
+                          type="monotone"
+                          dataKey={s.key}
+                          name={s.name}
+                          stroke={s.color}
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 4, fill: s.color, stroke: '#fff', strokeWidth: 2 }}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+              )}
 
-              {/* Share section */}
+              {/* Share */}
               <div style={{
                 background: 'rgba(255,255,255,0.02)',
                 border: '0.5px solid rgba(255,255,255,0.06)',

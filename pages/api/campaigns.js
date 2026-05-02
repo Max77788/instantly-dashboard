@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
     const headers = { Authorization: `Bearer ${apiKey}` };
 
-    // Fetch only active campaigns (status=1) directly from the API
+    // Fetch only active campaigns (status=1)
     const listRes = await fetch(
       'https://api.instantly.ai/api/v2/campaigns?status=1&limit=100',
       { headers }
@@ -25,41 +25,44 @@ export default async function handler(req, res) {
     const campaigns = listData.items || [];
 
     if (campaigns.length === 0) {
-      return res.status(200).json({ campaigns: [], updated: new Date().toISOString() });
+      return res.status(200).json({ stats: null, daily: [], campaignCount: 0, updated: new Date().toISOString() });
     }
 
-    // Fetch analytics for active campaigns via GET with repeated ids query params
-    const analyticsParams = campaigns.map(c => `ids=${encodeURIComponent(c.id)}`).join('&');
-    const analyticsUrl = `https://api.instantly.ai/api/v2/campaigns/analytics?${analyticsParams}`;
+    // Fetch aggregated analytics overview for all active campaigns (no campaign IDs = all)
+    const overviewRes = await fetch(
+      'https://api.instantly.ai/api/v2/campaigns/analytics/overview?campaign_status=1',
+      { headers }
+    );
 
-    const analyticsRes = await fetch(analyticsUrl, { headers });
-
-    if (!analyticsRes.ok) {
-      const text = await analyticsRes.text();
-      return res.status(502).json({ error: `Instantly analytics API error (${analyticsRes.status}): ${text}` });
-    }
-
-    const analyticsData = await analyticsRes.json();
-    const analytics = Array.isArray(analyticsData) ? analyticsData : [];
-
-    // Merge campaign list with analytics on campaign_id
-    const merged = campaigns.map(c => {
-      const a = analytics.find(x => x.campaign_id === c.id) || {};
-      return {
-        id: c.id,
-        name: c.name,
-        status: c.status,
-        leads: a.leads_count || 0,
-        sent: a.emails_sent_count || 0,
-        contacted: a.contacted_count || 0,
-        replies: a.reply_count || 0,
-        bounced: a.bounced_count || 0,
-        opportunities: a.total_opportunities || 0,
-        opens: a.open_count_unique || 0
+    let stats = null;
+    if (overviewRes.ok) {
+      const overviewData = await overviewRes.json();
+      // overviewData is a single object with all aggregate fields
+      stats = {
+        emailsSent: overviewData.emails_sent_count || 0,
+        contacted: overviewData.contacted_count || 0,
+        newLeadsContacted: overviewData.new_leads_contacted_count || 0,
+        openCount: overviewData.open_count || 0,
+        openUnique: overviewData.open_count_unique || 0,
+        clickCount: overviewData.link_click_count || 0,
+        clickUnique: overviewData.link_click_count_unique || 0,
+        replyCount: overviewData.reply_count || 0,
+        replyUnique: overviewData.reply_count_unique || 0,
+        replyAutomatic: overviewData.reply_count_automatic || 0,
+        replyAutomaticUnique: overviewData.reply_count_automatic_unique || 0,
+        bounced: overviewData.bounced_count || 0,
+        unsubscribed: overviewData.unsubscribed_count || 0,
+        completed: overviewData.completed_count || 0,
+        opportunities: overviewData.total_opportunities || 0,
+        opportunityValue: overviewData.total_opportunity_value || 0,
+        interested: overviewData.total_interested || 0,
+        meetingsBooked: overviewData.total_meeting_booked || 0,
+        meetingsCompleted: overviewData.total_meeting_completed || 0,
+        closed: overviewData.total_closed || 0,
       };
-    });
+    }
 
-    // Fetch daily analytics for active campaigns (last 30 days)
+    // Fetch daily analytics (last 30 days)
     const endDate = new Date().toISOString().slice(0, 10);
     const startDate = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 
@@ -74,7 +77,12 @@ export default async function handler(req, res) {
       daily = Array.isArray(dailyData) ? dailyData : [];
     }
 
-    return res.status(200).json({ campaigns: merged, daily, updated: new Date().toISOString() });
+    return res.status(200).json({
+      stats,
+      daily,
+      campaignCount: campaigns.length,
+      updated: new Date().toISOString(),
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
