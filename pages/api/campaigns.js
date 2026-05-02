@@ -8,31 +8,42 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'INSTANTLY_API_KEY not configured' });
     }
 
-    const listRes = await fetch('https://api.instantly.ai/api/v2/campaigns?limit=100', {
-      headers: { Authorization: `Bearer ${apiKey}` }
-    });
-    const listData = await listRes.json();
-    const allCampaigns = listData.items || [];
-    const activeCampaigns = allCampaigns.filter(c => c.status === 1);
+    const headers = { Authorization: `Bearer ${apiKey}` };
 
-    if (activeCampaigns.length === 0) {
-      return res.status(200).json({ campaigns: [], analytics: [] });
+    // Fetch only active campaigns (status=1) directly from the API
+    const listRes = await fetch(
+      'https://api.instantly.ai/api/v2/campaigns?status=1&limit=100',
+      { headers }
+    );
+
+    if (!listRes.ok) {
+      const text = await listRes.text();
+      return res.status(502).json({ error: `Instantly campaigns API error (${listRes.status}): ${text}` });
     }
 
-    const ids = activeCampaigns.map(c => c.id);
+    const listData = await listRes.json();
+    const campaigns = listData.items || [];
 
-    const analyticsRes = await fetch('https://api.instantly.ai/api/v2/analytics/campaign/summary', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ campaign_ids: ids })
-    });
+    if (campaigns.length === 0) {
+      return res.status(200).json({ campaigns: [], updated: new Date().toISOString() });
+    }
+
+    // Fetch analytics for active campaigns via GET with repeated ids query params
+    const analyticsParams = campaigns.map(c => `ids=${encodeURIComponent(c.id)}`).join('&');
+    const analyticsUrl = `https://api.instantly.ai/api/v2/campaigns/analytics?${analyticsParams}`;
+
+    const analyticsRes = await fetch(analyticsUrl, { headers });
+
+    if (!analyticsRes.ok) {
+      const text = await analyticsRes.text();
+      return res.status(502).json({ error: `Instantly analytics API error (${analyticsRes.status}): ${text}` });
+    }
+
     const analyticsData = await analyticsRes.json();
     const analytics = Array.isArray(analyticsData) ? analyticsData : [];
 
-    const merged = activeCampaigns.map(c => {
+    // Merge campaign list with analytics on campaign_id
+    const merged = campaigns.map(c => {
       const a = analytics.find(x => x.campaign_id === c.id) || {};
       return {
         id: c.id,
@@ -48,7 +59,22 @@ export default async function handler(req, res) {
       };
     });
 
-    return res.status(200).json({ campaigns: merged, updated: new Date().toISOString() });
+    // Fetch daily analytics for active campaigns (last 30 days)
+    const endDate = new Date().toISOString().slice(0, 10);
+    const startDate = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+    const dailyRes = await fetch(
+      `https://api.instantly.ai/api/v2/campaigns/analytics/daily?campaign_status=1&start_date=${startDate}&end_date=${endDate}`,
+      { headers }
+    );
+
+    let daily = [];
+    if (dailyRes.ok) {
+      const dailyData = await dailyRes.json();
+      daily = Array.isArray(dailyData) ? dailyData : [];
+    }
+
+    return res.status(200).json({ campaigns: merged, daily, updated: new Date().toISOString() });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
