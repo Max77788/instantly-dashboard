@@ -80,7 +80,7 @@ function KPI({ label, current, target, format, t }) {
   const tgt = format === 'pct' ? (target * 100).toFixed(1) + '%' : target.toLocaleString();
   const barPct = target > 0 ? Math.min(current / target * 100, 100) : 0;
   return (
-    <div style={{ background: t.kpiCardBg, border: `0.5px solid ${t.kpiCardBorder}`, borderRadius: 14, padding: '20px 24px' }}>
+    <div className="lift-card" style={{ background: t.kpiCardBg, border: `0.5px solid ${t.kpiCardBorder}`, borderRadius: 14, padding: '20px 24px' }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: t.textBody, marginBottom: 14 }}>{label}</div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 4 }}>
         <span style={{ fontSize: 36, fontWeight: 700, color: t.textHeading, lineHeight: 1 }}>{val}</span>
@@ -189,14 +189,17 @@ export default function Dashboard() {
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
       </Head>
 
-      <div style={{
-        fontFamily: "'Inter', -apple-system, sans-serif",
-        minHeight: '100vh',
-        background: t.bg,
-        color: t.textBody,
-        padding: '2rem 1.5rem',
-        transition: 'background 0.3s, color 0.3s',
-      }}>
+      <div
+        className={dark ? 'theme-dark' : 'theme-light'}
+        style={{
+          fontFamily: "'Inter', -apple-system, sans-serif",
+          minHeight: '100vh',
+          background: t.bg,
+          color: t.textBody,
+          padding: '2rem 1.5rem',
+          transition: 'background 0.3s, color 0.3s',
+        }}
+      >
         <div style={{ maxWidth: 960, margin: '0 auto' }}>
 
           {/* ── Header ── */}
@@ -264,7 +267,7 @@ export default function Dashboard() {
           {!loading && stats && (
             <>
               {/* ═══════ SECTION 1 — Contacted Leads Chart ═══════ */}
-              <div style={{
+              <div className="lift-card" style={{
                 background: t.surface, border: `0.5px solid ${t.border}`,
                 borderRadius: 14, padding: '20px 24px', marginBottom: '1.25rem',
               }}>
@@ -323,7 +326,7 @@ export default function Dashboard() {
               </div>
 
               {/* ═══════ SECTION 2 — Campaign Send Table ═══════ */}
-              <div style={{
+              <div className="lift-card" style={{
                 background: t.surface, border: `0.5px solid ${t.border}`,
                 borderRadius: 14, padding: '20px 24px', marginBottom: '1.25rem',
                 overflowX: 'auto',
@@ -397,14 +400,14 @@ export default function Dashboard() {
                 display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: 14, marginBottom: '1.25rem',
               }}>
-                <div style={{ background: t.surface, border: `0.5px solid ${t.border}`, borderRadius: 12, padding: '14px 18px' }}>
+                <div className="lift-card" style={{ background: t.surface, border: `0.5px solid ${t.border}`, borderRadius: 12, padding: '14px 18px' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Formula</div>
                   <div style={{ fontSize: 13, color: t.textBody, lineHeight: 1.5 }}>
                     Positive replies <span style={{ color: t.textMuted }}>÷</span> Total emails sent<br />
                     <span style={{ fontSize: 11, color: t.textMuted }}>Excludes auto-replies &amp; negative replies. Positive = expressed interest / opportunity.</span>
                   </div>
                 </div>
-                <div style={{ background: t.surface, border: `0.5px solid ${t.border}`, borderRadius: 12, padding: '14px 18px' }}>
+                <div className="lift-card" style={{ background: t.surface, border: `0.5px solid ${t.border}`, borderRadius: 12, padding: '14px 18px' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Formula</div>
                   <div style={{ fontSize: 13, color: t.textBody, lineHeight: 1.5 }}>
                     Booked calls <span style={{ color: t.textMuted }}>÷</span> Positive replies<br />
@@ -440,6 +443,24 @@ export default function Dashboard() {
       <style>{`
         * { box-sizing: border-box; }
         body { margin: 0; background: ${t.bodyBg}; transition: background 0.3s; }
+        .lift-card {
+          transition: transform 0.25s ease, box-shadow 0.25s ease;
+          will-change: transform, box-shadow;
+        }
+        .theme-light .lift-card {
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+        .theme-dark .lift-card {
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+        }
+        .theme-light .lift-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 15px 35px rgba(15, 23, 42, 0.18);
+        }
+        .theme-dark .lift-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
+        }
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
       `}</style>
     </>
