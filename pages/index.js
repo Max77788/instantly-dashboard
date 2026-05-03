@@ -218,16 +218,9 @@ export default function Dashboard() {
 
   const t = dark ? DARK : LIGHT;
 
-  // Persist theme preference
-  useEffect(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark') setDark(true);
-  }, []);
-
   const toggleTheme = () => {
     const next = !dark;
     setDark(next);
-    localStorage.setItem('theme', next ? 'dark' : 'light');
   };
 
   const fetchData = useCallback(async () => {
