@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
     const headers = { Authorization: `Bearer ${apiKey}` };
 
-    // Fetch only active campaigns (status=1)
+    // Fetch active campaigns
     const listRes = await fetch(
       'https://api.instantly.ai/api/v2/campaigns?status=1&limit=100',
       { headers }
@@ -25,10 +25,10 @@ export default async function handler(req, res) {
     const campaigns = listData.items || [];
 
     if (campaigns.length === 0) {
-      return res.status(200).json({ stats: null, daily: [], campaignCount: 0, updated: new Date().toISOString() });
+      return res.status(200).json({ stats: null, daily: [], campaigns: [], updated: new Date().toISOString() });
     }
 
-    // Fetch aggregated analytics overview for all active campaigns (no campaign IDs = all)
+    // Fetch aggregated analytics overview
     const overviewRes = await fetch(
       'https://api.instantly.ai/api/v2/campaigns/analytics/overview?campaign_status=1',
       { headers }
@@ -36,35 +36,35 @@ export default async function handler(req, res) {
 
     let stats = null;
     if (overviewRes.ok) {
-      const overviewData = await overviewRes.json();
-      // overviewData is a single object with all aggregate fields
+      const d = await overviewRes.json();
       stats = {
-        emailsSent: overviewData.emails_sent_count || 0,
-        contacted: overviewData.contacted_count || 0,
-        newLeadsContacted: overviewData.new_leads_contacted_count || 0,
-        openCount: overviewData.open_count || 0,
-        openUnique: overviewData.open_count_unique || 0,
-        clickCount: overviewData.link_click_count || 0,
-        clickUnique: overviewData.link_click_count_unique || 0,
-        replyCount: overviewData.reply_count || 0,
-        replyUnique: overviewData.reply_count_unique || 0,
-        replyAutomatic: overviewData.reply_count_automatic || 0,
-        replyAutomaticUnique: overviewData.reply_count_automatic_unique || 0,
-        bounced: overviewData.bounced_count || 0,
-        unsubscribed: overviewData.unsubscribed_count || 0,
-        completed: overviewData.completed_count || 0,
-        opportunities: overviewData.total_opportunities || 0,
-        opportunityValue: overviewData.total_opportunity_value || 0,
-        interested: overviewData.total_interested || 0,
-        meetingsBooked: overviewData.total_meeting_booked || 0,
-        meetingsCompleted: overviewData.total_meeting_completed || 0,
-        closed: overviewData.total_closed || 0,
+        emailsSent: d.emails_sent_count || 0,
+        contacted: d.contacted_count || 0,
+        newLeadsContacted: d.new_leads_contacted_count || 0,
+        openCount: d.open_count || 0,
+        openUnique: d.open_count_unique || 0,
+        clickCount: d.link_click_count || 0,
+        clickUnique: d.link_click_count_unique || 0,
+        replyCount: d.reply_count || 0,
+        replyUnique: d.reply_count_unique || 0,
+        replyAutomatic: d.reply_count_automatic || 0,
+        replyAutomaticUnique: d.reply_count_automatic_unique || 0,
+        bounced: d.bounced_count || 0,
+        unsubscribed: d.unsubscribed_count || 0,
+        completed: d.completed_count || 0,
+        opportunities: d.total_opportunities || 0,
+        opportunityValue: d.total_opportunity_value || 0,
+        interested: d.total_interested || 0,
+        meetingsBooked: d.total_meeting_booked || 0,
+        meetingsCompleted: d.total_meeting_completed || 0,
+        closed: d.total_closed || 0,
       };
     }
 
-    // Fetch daily analytics (last 30 days)
+    // Fetch daily analytics — configurable days (default 7)
+    const days = parseInt(req.query.days, 10) || 7;
     const endDate = new Date().toISOString().slice(0, 10);
-    const startDate = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const startDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
     const dailyRes = await fetch(
       `https://api.instantly.ai/api/v2/campaigns/analytics/daily?campaign_status=1&start_date=${startDate}&end_date=${endDate}`,
@@ -77,10 +77,13 @@ export default async function handler(req, res) {
       daily = Array.isArray(dailyData) ? dailyData : [];
     }
 
+    // Return campaign names for the table header context
+    const campaignNames = campaigns.map(c => ({ id: c.id, name: c.name }));
+
     return res.status(200).json({
       stats,
       daily,
-      campaignCount: campaigns.length,
+      campaigns: campaignNames,
       updated: new Date().toISOString(),
     });
   } catch (err) {
