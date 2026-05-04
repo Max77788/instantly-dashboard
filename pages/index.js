@@ -209,7 +209,7 @@ export default function Dashboard() {
           }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: t.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-                AI FusionIQ Labs
+                AI FusionIQ Labs <span style={{ fontSize: 10, color: t.textFaint, marginLeft: 6 }}>v1.3</span>
               </div>
               <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: t.textHeading }}>
                 Sunita Campaign • <span style={{ fontWeight: 400, color: t.textMuted }}>Analytics</span>
@@ -425,6 +425,7 @@ export default function Dashboard() {
                   <div style={{ fontSize: 12, color: t.textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
                     Updated {lastUpdated.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })} · auto-refresh every 5 min
+                    <span style={{ fontSize: 10, color: t.textFaint, marginLeft: 4 }}>v1.3</span>
                   </div>
                 )}
                 <button onClick={() => fetchData(days)} style={{
