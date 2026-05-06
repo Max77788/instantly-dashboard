@@ -569,7 +569,7 @@ export default function Dashboard() {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: t.textBody }}>Unibox Messages</div>
                   <div style={{ fontSize: 11, color: t.textMuted }}>
-                    {unibox?.accounts?.length || 0} @sunitausa.com account{(unibox?.accounts?.length || 0) !== 1 ? 's' : ''}
+                    {unibox?.accounts?.length || 0} email account{(unibox?.accounts?.length || 0) !== 1 ? 's' : ''}
                   </div>
                 </div>
                 <button onClick={fetchUnibox} style={{
@@ -596,7 +596,7 @@ export default function Dashboard() {
 
               {unibox && !unibox.error && unibox.messages?.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '3rem', color: t.textMuted, fontSize: 13 }}>
-                  No messages found for @sunitausa.com accounts.
+                  No messages found.
                 </div>
               )}
 

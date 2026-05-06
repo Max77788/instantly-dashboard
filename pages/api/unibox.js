@@ -24,20 +24,13 @@ export default async function handler(req, res) {
     const acctData = await acctRes.json();
     const allAccounts = acctData.items || [];
 
-    // Filter for @sunitausa.com accounts
-    const sunitaAccounts = allAccounts.filter(a =>
-      a.email && a.email.toLowerCase().endsWith('@sunitausa.com')
-    );
-
-    if (sunitaAccounts.length === 0) {
+    if (allAccounts.length === 0) {
       return res.status(200).json({ messages: [], accounts: [], updated: new Date().toISOString() });
     }
 
-    // 2. Fetch emails for each sunita account
-    const eaccountParam = sunitaAccounts.map(a => encodeURIComponent(a.email)).join(',');
-
+    // 2. Fetch emails for all accounts
     const emailRes = await fetch(
-      `https://api.instantly.ai/api/v2/emails?eaccount=${eaccountParam}&limit=50&sort_order=desc`,
+      `https://api.instantly.ai/api/v2/emails?limit=50&sort_order=desc`,
       { headers }
     );
 
@@ -70,7 +63,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       messages,
-      accounts: sunitaAccounts.map(a => ({ email: a.email, provider: a.provider_name || '' })),
+      accounts: allAccounts.map(a => ({ email: a.email, provider: a.provider_name || '' })),
       updated: new Date().toISOString(),
     });
   } catch (err) {
