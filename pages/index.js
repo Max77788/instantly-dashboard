@@ -159,6 +159,7 @@ export default function Dashboard() {
 
   const stats = data?.stats;
   const daily = data?.daily || [];
+  const segments = data?.segments || [];
 
   const dailyAgg = useMemo(() => {
     const map = {};
@@ -216,6 +217,25 @@ export default function Dashboard() {
               </h1>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Instantly link */}
+              <a
+                href="https://app.instantly.ai/share/campaign?id=7ffce713-0d9d-4175-8d38-81742334b211"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: 12, fontWeight: 600, padding: '7px 14px', borderRadius: 6,
+                  border: `0.5px solid ${t.primary}33`,
+                  background: t.primaryLight,
+                  color: t.primary, textDecoration: 'none',
+                  fontFamily: "'Inter', sans-serif",
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Open in Instantly
+              </a>
+
               {/* Theme toggle */}
               <button onClick={toggleTheme} title={dark ? 'Light mode' : 'Dark mode'} style={{
                 width: 44, height: 24, borderRadius: 12,
@@ -415,6 +435,49 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* ═══════ SECTION 4 — By Segment Table ═══════ */}
+              {segments.length > 0 && (
+                <div style={{
+                  background: t.surface, border: `0.5px solid ${t.border}`,
+                  borderRadius: 14, padding: '20px 24px', marginBottom: '1.25rem',
+                  overflowX: 'auto',
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: t.textBody, marginBottom: 14 }}>
+                    By Segment
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
+                    <thead>
+                      <tr>
+                        {['Segment', 'Leads', 'Sent', 'Replies', 'Bounced', 'OPP', '% Replied'].map(h => (
+                          <th key={h} style={{
+                            textAlign: 'left', padding: '8px 12px',
+                            borderBottom: `1px solid ${t.borderLight}`,
+                            fontSize: 11, color: t.textMuted, fontWeight: 600,
+                            textTransform: 'uppercase', letterSpacing: '0.05em',
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {segments.map((s, i) => (
+                        <tr key={s.id}>
+                          <td style={{
+                            padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`,
+                            fontWeight: 600, color: t.textBody, fontSize: 13,
+                          }}>{s.name}</td>
+                          <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.leads)}</td>
+                          <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.sent)}</td>
+                          <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.replies)}</td>
+                          <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.bounced)}</td>
+                          <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, color: t.green, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>{fmt(s.opportunities)}</td>
+                          <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontWeight: 600, color: t.primary, fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>{s.replyPct}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {/* ── Footer ── */}
               <div style={{

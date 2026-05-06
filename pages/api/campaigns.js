@@ -77,13 +77,41 @@ export default async function handler(req, res) {
       daily = Array.isArray(dailyData) ? dailyData : [];
     }
 
-    // Return campaign names for the table header context
-    const campaignNames = campaigns.map(c => ({ id: c.id, name: c.name }));
+    // Fetch per-campaign analytics for segment table
+    const ids = campaigns.map(c => c.id);
+    const analyticsParams = ids.map(id => `ids=${encodeURIComponent(id)}`).join('&');
+    const segmentRes = await fetch(
+      `https://api.instantly.ai/api/v2/campaigns/analytics?${analyticsParams}`,
+      { headers }
+    );
+
+    let segments = [];
+    if (segmentRes.ok) {
+      const segmentData = await segmentRes.json();
+      const analyticsArr = Array.isArray(segmentData) ? segmentData : [];
+      segments = campaigns.map(c => {
+        const a = analyticsArr.find(x => x.campaign_id === c.id) || {};
+        const opp = a.total_opportunities || 0;
+        const sent = a.emails_sent_count || 0;
+        return {
+          id: c.id,
+          name: c.name,
+          status: c.status,
+          leads: a.leads_count || 0,
+          sent,
+          contacted: a.contacted_count || 0,
+          replies: a.reply_count || 0,
+          bounced: a.bounced_count || 0,
+          opportunities: opp,
+          replyPct: sent > 0 ? ((opp / sent) * 100).toFixed(1) : '0.0',
+        };
+      });
+    }
 
     return res.status(200).json({
       stats,
       daily,
-      campaigns: campaignNames,
+      segments,
       updated: new Date().toISOString(),
     });
   } catch (err) {
