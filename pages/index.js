@@ -152,6 +152,8 @@ export default function Dashboard() {
   const [tab, setTab] = useState('analytics');
   const [unibox, setUnibox] = useState(null);
   const [uniboxLoading, setUniboxLoading] = useState(false);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+  const [emailLoading, setEmailLoading] = useState(false);
 
   const t = dark ? DARK : LIGHT;
 
@@ -174,6 +176,23 @@ export default function Dashboard() {
   useEffect(() => {
     if (tab === 'unibox' && !unibox) fetchUnibox();
   }, [tab, unibox, fetchUnibox]);
+
+  const openEmail = useCallback(async (id) => {
+    try {
+      setEmailLoading(true);
+      setSelectedEmail({ id, loading: true });
+      const res = await fetch(`/api/email?id=${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error('Failed to fetch email');
+      const json = await res.json();
+      setSelectedEmail(json.email);
+    } catch (e) {
+      setSelectedEmail({ error: e.message });
+    } finally {
+      setEmailLoading(false);
+    }
+  }, []);
+
+  const closeEmail = () => setSelectedEmail(null);
 
   const fetchData = useCallback(async (d) => {
     try {
@@ -605,8 +624,9 @@ export default function Dashboard() {
                   {unibox.messages.map((m) => (
                     <div
                       key={m.id}
+                      onClick={() => openEmail(m.id)}
                       style={{
-                        display: 'block', color: 'inherit',
+                        display: 'block', color: 'inherit', cursor: 'pointer',
                         padding: '14px 16px', borderRadius: 8,
                         borderBottom: `0.5px solid ${t.borderLight}`,
                         background: m.isUnread ? t.primaryLight : 'transparent',
@@ -664,6 +684,134 @@ export default function Dashboard() {
 
         </div>
       </div>
+
+      {/* ═══════ EMAIL MODAL ═══════ */}
+      {selectedEmail && (
+        <div
+          onClick={closeEmail}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            padding: '40px 16px', overflowY: 'auto',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: t.surface, border: `0.5px solid ${t.border}`,
+              borderRadius: 14, width: '100%', maxWidth: 720, maxHeight: '85vh',
+              overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+          >
+            {/* Modal header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', borderBottom: `0.5px solid ${t.borderLight}`,
+              position: 'sticky', top: 0, background: t.surface, zIndex: 1,
+              borderTopLeftRadius: 14, borderTopRightRadius: 14,
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: t.textHeading }}>
+                {selectedEmail.subject || 'Email'}
+              </span>
+              <button onClick={closeEmail} style={{
+                width: 28, height: 28, borderRadius: '50%', border: 'none',
+                background: t.borderLight, color: t.textMuted, cursor: 'pointer',
+                fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                lineHeight: 1, fontFamily: "'Inter', sans-serif",
+              }}>×</button>
+            </div>
+
+            {/* Loading */}
+            {selectedEmail.loading && (
+              <div style={{ textAlign: 'center', padding: '3rem', color: t.textMuted, fontSize: 13 }}>
+                Loading email...
+              </div>
+            )}
+
+            {/* Error */}
+            {selectedEmail.error && (
+              <div style={{ padding: '2rem', textAlign: 'center', color: t.red, fontSize: 13 }}>
+                Failed to load email: {selectedEmail.error}
+              </div>
+            )}
+
+            {/* Email content */}
+            {selectedEmail.from && (
+              <div style={{ padding: '20px 24px' }}>
+                {/* Meta */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: t.textHeading, marginBottom: 2 }}>
+                        {selectedEmail.from}
+                      </div>
+                      <div style={{ fontSize: 12, color: t.textMuted }}>
+                        to {selectedEmail.to?.join(', ') || selectedEmail.eaccount}
+                        {selectedEmail.cc?.length > 0 && <span> · cc: {selectedEmail.cc.join(', ')}</span>}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, color: t.textMuted, whiteSpace: 'nowrap' }}>
+                        {new Date(selectedEmail.createdAt).toLocaleDateString('en-US', {
+                          weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </div>
+                      {selectedEmail.eaccount && (
+                        <div style={{ fontSize: 10, color: t.textFaint, marginTop: 2 }}>via {selectedEmail.eaccount}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {selectedEmail.isUnread && (
+                      <span style={{ fontSize: 10, fontWeight: 600, color: t.primary, background: t.primaryLight, padding: '2px 8px', borderRadius: 999 }}>Unread</span>
+                    )}
+                    {selectedEmail.isAutoReply && (
+                      <span style={{ fontSize: 10, fontWeight: 500, color: t.amber, background: t.amberBg, padding: '2px 8px', borderRadius: 999 }}>Auto reply</span>
+                    )}
+                    {selectedEmail.aiInterest > 0.5 && (
+                      <span style={{ fontSize: 10, fontWeight: 500, color: t.green, background: t.greenBg, padding: '2px 8px', borderRadius: 999 }}>
+                        AI Interest: {(selectedEmail.aiInterest * 100).toFixed(0)}%
+                      </span>
+                    )}
+                    {selectedEmail.lead && (
+                      <span style={{ fontSize: 10, fontWeight: 500, color: t.textMuted, padding: '2px 8px', borderRadius: 999 }}>
+                        Lead: {selectedEmail.lead}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div style={{
+                  borderTop: `0.5px solid ${t.borderLight}`,
+                  paddingTop: 20,
+                  lineHeight: 1.7,
+                  fontSize: 14,
+                  color: t.textBody,
+                }}>
+                  {selectedEmail.bodyHtml ? (
+                    <div
+                      dangerouslySetInnerHTML={{ __html: selectedEmail.bodyHtml }}
+                      style={{
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                      }}
+                    />
+                  ) : selectedEmail.bodyText ? (
+                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {selectedEmail.bodyText}
+                    </div>
+                  ) : (
+                    <div style={{ color: t.textMuted }}>(no content)</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <style>{`
         * { box-sizing: border-box; }
