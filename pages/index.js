@@ -149,10 +149,31 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [days, setDays] = useState(7);
   const [dark, setDark] = useState(false);
+  const [tab, setTab] = useState('analytics');
+  const [unibox, setUnibox] = useState(null);
+  const [uniboxLoading, setUniboxLoading] = useState(false);
 
   const t = dark ? DARK : LIGHT;
 
   const toggleTheme = () => setDark(!dark);
+
+  const fetchUnibox = useCallback(async () => {
+    try {
+      setUniboxLoading(true);
+      const res = await fetch('/api/unibox');
+      if (!res.ok) throw new Error('Failed to fetch unibox');
+      const json = await res.json();
+      setUnibox(json);
+    } catch (e) {
+      setUnibox({ error: e.message });
+    } finally {
+      setUniboxLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'unibox' && !unibox) fetchUnibox();
+  }, [tab, unibox, fetchUnibox]);
 
   const fetchData = useCallback(async (d) => {
     try {
@@ -283,8 +304,42 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* ── Tab bar ── */}
+          <div style={{
+            display: 'flex', gap: 4, marginBottom: '1.5rem',
+            background: t.borderLight, borderRadius: 10, padding: 3,
+            width: 'fit-content',
+          }}>
+            {[
+              ['analytics', 'Analytics'],
+              ['unibox', 'Unibox Messages'],
+            ].map(([key, label]) => (
+              <button key={key} onClick={() => setTab(key)} style={{
+                fontSize: 13, fontWeight: 600, padding: '8px 20px', borderRadius: 8,
+                border: 'none',
+                background: tab === key ? t.surface : 'transparent',
+                color: tab === key ? t.textHeading : t.textMuted,
+                cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+                transition: 'all 0.15s',
+                boxShadow: tab === key ? `0 1px 3px rgba(0,0,0,0.06)` : 'none',
+              }}>
+                {label}
+                {key === 'unibox' && unibox?.messages?.length > 0 && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    minWidth: 18, height: 18, borderRadius: 9,
+                    background: t.primary, color: '#fff', fontSize: 10, fontWeight: 700,
+                    marginLeft: 6, padding: '0 5px',
+                  }}>
+                    {unibox.messages.length > 99 ? '99+' : unibox.messages.filter(m => m.isUnread).length || unibox.messages.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
           {/* ── Error ── */}
-          {error && (
+          {error && tab === 'analytics' && (
             <div style={{
               background: t.redBg, border: `0.5px solid ${t.red}33`, borderRadius: 10,
               padding: '12px 16px', color: t.red, fontSize: 13, marginBottom: '1.5rem',
@@ -303,7 +358,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {!loading && stats && (
+          {tab === 'analytics' && !loading && stats && (
             <>
               {/* ═══════ SECTION 1 — Contacted Leads Chart ═══════ */}
               <div className="lift-card" style={{
@@ -503,6 +558,113 @@ export default function Dashboard() {
               </div>
             </>
           )}
+
+          {/* ═══════ UNIBOX TAB ═══════ */}
+          {tab === 'unibox' && (
+            <div style={{
+              background: t.surface, border: `0.5px solid ${t.border}`,
+              borderRadius: 14, padding: '20px 24px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: t.textBody }}>Unibox Messages</div>
+                  <div style={{ fontSize: 11, color: t.textMuted }}>
+                    {unibox?.accounts?.length || 0} @sunitausa.com account{(unibox?.accounts?.length || 0) !== 1 ? 's' : ''}
+                  </div>
+                </div>
+                <button onClick={fetchUnibox} style={{
+                  fontSize: 12, padding: '7px 14px', borderRadius: 6,
+                  border: `0.5px solid ${t.primary}33`,
+                  background: t.primaryLight,
+                  color: t.primary, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: "'Inter', sans-serif",
+                }}>
+                  {uniboxLoading ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
+
+              {uniboxLoading && !unibox && (
+                <div style={{ textAlign: 'center', padding: '3rem', color: t.textMuted, fontSize: 13 }}>Loading messages...</div>
+              )}
+
+              {unibox?.error && (
+                <div style={{
+                  background: t.redBg, border: `0.5px solid ${t.red}33`, borderRadius: 8,
+                  padding: '10px 14px', color: t.red, fontSize: 12, marginBottom: 12,
+                }}>{unibox.error}</div>
+              )}
+
+              {unibox && !unibox.error && unibox.messages?.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '3rem', color: t.textMuted, fontSize: 13 }}>
+                  No messages found for @sunitausa.com accounts.
+                </div>
+              )}
+
+              {unibox?.messages?.length > 0 && (
+                <div style={{ maxHeight: 600, overflowY: 'auto' }}>
+                  {unibox.messages.map((m) => (
+                    <a
+                      key={m.id}
+                      href={`https://app.instantly.ai/unibox?thread_id=${m.threadId || m.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'block', textDecoration: 'none', color: 'inherit',
+                        padding: '14px 16px', borderRadius: 8,
+                        borderBottom: `0.5px solid ${t.borderLight}`,
+                        background: m.isUnread ? t.primaryLight : 'transparent',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => { if (!m.isUnread) e.currentTarget.style.background = t.borderLight; }}
+                      onMouseLeave={e => { if (!m.isUnread) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 4 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: t.textBody, marginBottom: 1 }}>
+                            {m.isUnread && <span style={{ width: 6, height: 6, borderRadius: '50%', background: t.primary, display: 'inline-block', marginRight: 6, verticalAlign: 'middle' }} />}
+                            {m.from}
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: t.textHeading, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {m.subject}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: 11, color: t.textMuted, whiteSpace: 'nowrap' }}>
+                            {new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          <div style={{ fontSize: 10, color: t.textFaint, marginTop: 1 }}>{m.eaccount}</div>
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: 12, color: t.textMuted, lineHeight: 1.4,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        maxWidth: '100%',
+                      }}>
+                        {m.bodyPreview || '(no preview)'}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                        {m.isUnread && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: t.primary, background: t.primaryLight, padding: '1px 8px', borderRadius: 999 }}>New</span>
+                        )}
+                        {m.isAutoReply && (
+                          <span style={{ fontSize: 10, fontWeight: 500, color: t.amber, background: t.amberBg, padding: '1px 8px', borderRadius: 999 }}>Auto</span>
+                        )}
+                        {m.aiInterest > 0.5 && (
+                          <span style={{ fontSize: 10, fontWeight: 500, color: t.green, background: t.greenBg, padding: '1px 8px', borderRadius: 999 }}>Interested</span>
+                        )}
+                        {m.lead && (
+                          <span style={{ fontSize: 10, fontWeight: 500, color: t.textMuted, padding: '1px 8px', borderRadius: 999 }}>
+                            Lead: {m.lead}
+                          </span>
+                        )}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
