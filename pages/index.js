@@ -74,14 +74,33 @@ const DARK = {
 };
 
 // ── Sub-components ──
-function KPI({ label, current, target, format, t }) {
+function KPI({ label, current, target, format, t, formula, note }) {
   const met = current >= target;
   const val = format === 'pct' ? (current * 100).toFixed(1) + '%' : current.toLocaleString();
   const tgt = format === 'pct' ? (target * 100).toFixed(1) + '%' : target.toLocaleString();
   const barPct = target > 0 ? Math.min(current / target * 100, 100) : 0;
   return (
     <div className="lift-card" style={{ background: t.kpiCardBg, border: `0.5px solid ${t.kpiCardBorder}`, borderRadius: 14, padding: '20px 24px' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: t.textBody, marginBottom: 14 }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: t.textBody }}>{label}</span>
+        <span className="kpi-tooltip-wrap" style={{ position: 'relative', display: 'inline-flex', cursor: 'help' }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 16, height: 16, borderRadius: '50%', fontSize: 10, fontWeight: 700,
+            color: t.textMuted, background: t.borderLight, lineHeight: 1,
+          }}>?</span>
+          <span className="kpi-tooltip" style={{
+            position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%', transform: 'translateX(-50%)',
+            background: t.tooltipBg, border: `0.5px solid ${t.tooltipBorder}`, borderRadius: 8,
+            padding: '10px 14px', fontSize: 12, color: t.tooltipText, fontWeight: 400,
+            whiteSpace: 'nowrap', boxShadow: t.tooltipShadow,
+            pointerEvents: 'none', opacity: 0, transition: 'opacity 0.15s',
+          }}>
+            <strong>Formula:</strong> {formula}<br />
+            <span style={{ color: t.textMuted }}>{note}</span>
+          </span>
+        </span>
+      </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 4 }}>
         <span style={{ fontSize: 36, fontWeight: 700, color: t.textHeading, lineHeight: 1 }}>{val}</span>
         <span style={{ fontSize: 14, color: t.textMuted, marginBottom: 4 }}>/ target {tgt}</span>
@@ -411,29 +430,12 @@ export default function Dashboard() {
                 display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: 14, marginBottom: '1.25rem',
               }}>
-                <KPI t={t} label="Positive Reply Rate" current={positiveReplyRate} target={0.02} format="pct" />
-                <KPI t={t} label="Booked Call Rate" current={bookedCallRate} target={0.25} format="pct" />
-              </div>
-
-              {/* KPI formula descriptions */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: 14, marginBottom: '1.25rem',
-              }}>
-                <div className="lift-card" style={{ background: t.surface, border: `0.5px solid ${t.border}`, borderRadius: 12, padding: '14px 18px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Formula</div>
-                  <div style={{ fontSize: 13, color: t.textBody, lineHeight: 1.5 }}>
-                    Positive replies <span style={{ color: t.textMuted }}>÷</span> Total emails sent<br />
-                    <span style={{ fontSize: 11, color: t.textMuted }}>Excludes auto-replies &amp; negative replies. Positive = expressed interest / opportunity.</span>
-                  </div>
-                </div>
-                <div className="lift-card" style={{ background: t.surface, border: `0.5px solid ${t.border}`, borderRadius: 12, padding: '14px 18px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Formula</div>
-                  <div style={{ fontSize: 13, color: t.textBody, lineHeight: 1.5 }}>
-                    Booked calls <span style={{ color: t.textMuted }}>÷</span> Positive replies<br />
-                    <span style={{ fontSize: 11, color: t.textMuted }}>Connected to Microsoft Bookings calendar. Booked = meetings booked in Instantly.</span>
-                  </div>
-                </div>
+                <KPI t={t} label="Positive Reply Rate" current={positiveReplyRate} target={0.02} format="pct"
+                  formula="Positive replies ÷ Total emails sent"
+                  note="Excludes auto-replies &amp; negative replies. Positive = expressed interest / opportunity." />
+                <KPI t={t} label="Booked Call Rate" current={bookedCallRate} target={0.25} format="pct"
+                  formula="Booked calls ÷ Positive replies"
+                  note="Connected to Microsoft Bookings calendar. Booked = meetings booked in Instantly." />
               </div>
 
               {/* ═══════ SECTION 4 — By Segment Table ═══════ */}
@@ -526,6 +528,7 @@ export default function Dashboard() {
           box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
         }
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+        .kpi-tooltip-wrap:hover .kpi-tooltip { opacity: 1 !important; }
       `}</style>
     </>
   );
