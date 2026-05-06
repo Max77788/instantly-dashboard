@@ -42,7 +42,13 @@ export default async function handler(req, res) {
     const emailData = await emailRes.json();
     const raw = emailData.items || [];
 
-    const messages = raw.map(m => ({
+    const messages = raw
+      .filter(m => {
+        const e = (m.eaccount || '').toLowerCase();
+        const f = (m.from_address_email || '').toLowerCase();
+        return e.endsWith('@sunitausa.com') || f.endsWith('@sunitausa.com');
+      })
+      .map(m => ({
       id: m.id,
       threadId: m.thread_id || '',
       subject: m.subject || '(no subject)',

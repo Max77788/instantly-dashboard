@@ -603,13 +603,10 @@ export default function Dashboard() {
               {unibox?.messages?.length > 0 && (
                 <div style={{ maxHeight: 600, overflowY: 'auto' }}>
                   {unibox.messages.map((m) => (
-                    <a
+                    <div
                       key={m.id}
-                      href={`https://app.instantly.ai/unibox?thread_id=${m.threadId || m.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       style={{
-                        display: 'block', textDecoration: 'none', color: 'inherit',
+                        display: 'block', color: 'inherit',
                         padding: '14px 16px', borderRadius: 8,
                         borderBottom: `0.5px solid ${t.borderLight}`,
                         background: m.isUnread ? t.primaryLight : 'transparent',
@@ -658,7 +655,7 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
-                    </a>
+                    </div>
                   ))}
                 </div>
               )}
