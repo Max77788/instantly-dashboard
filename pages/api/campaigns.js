@@ -18,6 +18,7 @@ export default async function handler(req, res) {
 
     if (!listRes.ok) {
       const text = await listRes.text();
+      console.error('Campaigns list error:', listRes.status, text);
       return res.status(502).json({ error: `Campaigns API error (${listRes.status}): ${text}` });
     }
 
@@ -28,23 +29,51 @@ export default async function handler(req, res) {
       return res.status(200).json({ stats: null, daily: [], segments: [], updated: new Date().toISOString() });
     }
 
-    // 2. Fetch per-campaign analytics (used for BOTH aggregate stats AND segment table)
     const ids = campaigns.map(c => c.id);
-    const analyticsParams = ids.map(id => `ids=${encodeURIComponent(id)}`).join('&');
-    const analyticsRes = await fetch(
-      `https://api.instantly.ai/api/v2/campaigns/analytics?${analyticsParams}`,
-      { headers }
-    );
 
-    if (!analyticsRes.ok) {
-      const text = await analyticsRes.text();
-      return res.status(502).json({ error: `Analytics API error (${analyticsRes.status}): ${text}` });
+    // 2. Fetch per-campaign analytics — try batch first, then one-by-one fallback
+    let analyticsArr = [];
+
+    const batchParams = ids.map(id => `ids=${encodeURIComponent(id)}`).join('&');
+    const batchUrl = `https://api.instantly.ai/api/v2/campaigns/analytics?${batchParams}`;
+    console.error('Analytics batch URL:', batchUrl.substring(0, 200));
+
+    const batchRes = await fetch(batchUrl, { headers });
+    console.error('Analytics batch status:', batchRes.status);
+
+    if (batchRes.ok) {
+      const data = await batchRes.json();
+      analyticsArr = Array.isArray(data) ? data : [];
+      console.error('Analytics batch returned', analyticsArr.length, 'items');
+    } else {
+      const text = await batchRes.text();
+      console.error('Analytics batch failed:', batchRes.status, text.substring(0, 300));
     }
 
-    const analyticsData = await analyticsRes.json();
-    const analyticsArr = Array.isArray(analyticsData) ? analyticsData : [];
+    // Fallback: if batch returned nothing, try individual calls
+    if (analyticsArr.length === 0 && ids.length > 0) {
+      console.error('Batch empty, trying individual campaign fetches...');
+      const individual = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const r = await fetch(
+              `https://api.instantly.ai/api/v2/campaigns/analytics?id=${encodeURIComponent(id)}`,
+              { headers }
+            );
+            if (r.ok) {
+              const d = await r.json();
+              const arr = Array.isArray(d) ? d : [d];
+              return arr;
+            }
+            return [];
+          } catch { return []; }
+        })
+      );
+      analyticsArr = individual.flat();
+      console.error('Individual fetches returned', analyticsArr.length, 'items');
+    }
 
-    // Build segment rows
+    // 3. Build segment rows and compute aggregate stats
     const segments = campaigns.map(c => {
       const a = analyticsArr.find(x => x.campaign_id === c.id) || {};
       const opp = a.total_opportunities || 0;
@@ -63,7 +92,6 @@ export default async function handler(req, res) {
       };
     });
 
-    // Compute aggregate stats from per-campaign analytics
     const sum = (key) => analyticsArr.reduce((a, x) => a + (x[key] || 0), 0);
     const stats = {
       emailsSent: sum('emails_sent_count'),
@@ -88,7 +116,7 @@ export default async function handler(req, res) {
       closed: sum('total_closed'),
     };
 
-    // 3. Fetch daily analytics
+    // 4. Fetch daily analytics
     const days = parseInt(req.query.days, 10) || 7;
     const endDate = new Date().toISOString().slice(0, 10);
     const startDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
@@ -111,6 +139,7 @@ export default async function handler(req, res) {
       updated: new Date().toISOString(),
     });
   } catch (err) {
+    console.error('Campaigns API error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
