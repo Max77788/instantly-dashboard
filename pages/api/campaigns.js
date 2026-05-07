@@ -24,11 +24,10 @@ export default async function handler(req, res) {
     const listData = await listRes.json();
     const allCampaigns = listData.items || [];
 
-    // Filter to only campaigns with "SH" but NOT "SHI" in the name
-    const campaigns = allCampaigns.filter(c => {
-      const name = (c.name || '').toUpperCase();
-      return name.includes('SH') && !name.includes('SHI');
-    });
+    // Filter to only campaigns with "SHI " (including the space) in the name
+    const campaigns = allCampaigns.filter(c =>
+      (c.name || '').toUpperCase().includes('SHI ')
+    );
 
     if (campaigns.length === 0) {
       return res.status(200).json({ stats: null, daily: [], segments: [], updated: new Date().toISOString() });
