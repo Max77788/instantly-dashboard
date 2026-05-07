@@ -10,9 +10,9 @@ export default async function handler(req, res) {
 
     const headers = { Authorization: `Bearer ${apiKey}` };
 
-    // 1. Fetch active campaigns
+    // 1. Fetch all campaigns (active + paused)
     const listRes = await fetch(
-      'https://api.instantly.ai/api/v2/campaigns?status=1&limit=100',
+      'https://api.instantly.ai/api/v2/campaigns?limit=100',
       { headers }
     );
 
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
     let daily = [];
     try {
       const dailyRes = await fetch(
-        `https://api.instantly.ai/api/v2/campaigns/analytics/daily?campaign_status=1&start_date=${startDate}&end_date=${endDate}`,
+        `https://api.instantly.ai/api/v2/campaigns/analytics/daily?start_date=${startDate}&end_date=${endDate}`,
         { headers }
       );
       if (dailyRes.ok) {

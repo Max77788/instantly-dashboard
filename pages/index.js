@@ -374,7 +374,7 @@ export default function Dashboard() {
           {/* ── Empty ── */}
           {!loading && !error && !stats && (
             <div style={{ textAlign: 'center', padding: '5rem 2rem', color: t.textMuted }}>
-              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>No active campaigns</div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>No campaigns found</div>
               <div style={{ fontSize: 13 }}>Launch a campaign in Instantly to see analytics here.</div>
             </div>
           )}
@@ -471,7 +471,7 @@ export default function Dashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
                     <thead>
                       <tr>
-                        {['Segment', 'Leads', 'Sent', 'Replies', 'Bounced', 'OPP', '% Replied'].map(h => (
+                        {['Segment', 'Status', 'Leads', 'Sent', 'Replies', 'Bounced', 'OPP', '% Replied'].map(h => (
                           <th key={h} style={{
                             textAlign: 'left', padding: '8px 12px',
                             borderBottom: `1px solid ${t.borderLight}`,
@@ -488,6 +488,19 @@ export default function Dashboard() {
                             padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`,
                             fontWeight: 600, color: t.textBody, fontSize: 13,
                           }}>{s.name}</td>
+                          <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontSize: 11 }}>
+                            {s.status === 1 ? (
+                              <span style={{ color: t.green, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: t.green }} /> Active
+                              </span>
+                            ) : s.status === 2 ? (
+                              <span style={{ color: t.amber, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: t.amber }} /> Paused
+                              </span>
+                            ) : (
+                              <span style={{ color: t.textMuted, fontWeight: 500 }}>—</span>
+                            )}
+                          </td>
                           <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.leads)}</td>
                           <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.sent)}</td>
                           <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.replies)}</td>
