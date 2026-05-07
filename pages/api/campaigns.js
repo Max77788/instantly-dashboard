@@ -22,7 +22,12 @@ export default async function handler(req, res) {
     }
 
     const listData = await listRes.json();
-    const campaigns = listData.items || [];
+    const allCampaigns = listData.items || [];
+
+    // Filter to only campaigns with "SHI" in the name
+    const campaigns = allCampaigns.filter(c =>
+      (c.name || '').toUpperCase().includes('SHI')
+    );
 
     if (campaigns.length === 0) {
       return res.status(200).json({ stats: null, daily: [], segments: [], updated: new Date().toISOString() });
