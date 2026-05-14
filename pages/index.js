@@ -154,8 +154,8 @@ export default function Dashboard() {
   const [tab, setTab] = useState('analytics');
   const [unibox, setUnibox] = useState(null);
   const [uniboxLoading, setUniboxLoading] = useState(false);
-  const [selectedEmail, setSelectedEmail] = useState(null);
-  const [emailLoading, setEmailLoading] = useState(false);
+  const [selectedThread, setSelectedThread] = useState(null);
+  const [threadLoading, setThreadLoading] = useState(false);
 
   const t = dark ? DARK : LIGHT;
 
@@ -179,22 +179,40 @@ export default function Dashboard() {
     if (tab === 'unibox' && !unibox) fetchUnibox();
   }, [tab, unibox, fetchUnibox]);
 
-  const openEmail = useCallback(async (id) => {
+  const openThread = useCallback(async (threadId, sender) => {
     try {
-      setEmailLoading(true);
-      setSelectedEmail({ id, loading: true });
-      const res = await fetch(`/api/email?id=${encodeURIComponent(id)}`);
-      if (!res.ok) throw new Error('Failed to fetch email');
+      setThreadLoading(true);
+      setSelectedThread({ threadId, sender, loading: true });
+      const res = await fetch(`/api/thread?thread_id=${encodeURIComponent(threadId)}`);
+      if (!res.ok) throw new Error('Failed to fetch thread');
       const json = await res.json();
-      setSelectedEmail(json.email);
+      setSelectedThread({ threadId, sender, messages: json.messages || [] });
     } catch (e) {
-      setSelectedEmail({ error: e.message });
+      setSelectedThread({ error: e.message });
     } finally {
-      setEmailLoading(false);
+      setThreadLoading(false);
     }
   }, []);
 
-  const closeEmail = () => setSelectedEmail(null);
+  const closeThread = () => setSelectedThread(null);
+
+  // Group unibox messages by sender
+  const uniboxGroups = useMemo(() => {
+    if (!unibox?.messages) return [];
+    const map = {};
+    unibox.messages.forEach(m => {
+      const key = m.from || 'unknown';
+      if (!map[key]) {
+        map[key] = { sender: key, threadId: m.threadId, subject: m.subject, messages: [], latest: null, hasUnread: false };
+      }
+      map[key].messages.push(m);
+      if (!map[key].latest || new Date(m.createdAt) > new Date(map[key].latest.createdAt)) {
+        map[key].latest = m;
+      }
+      if (m.isUnread) map[key].hasUnread = true;
+    });
+    return Object.values(map).sort((a, b) => new Date(b.latest.createdAt) - new Date(a.latest.createdAt));
+  }, [unibox]);
 
   const fetchData = useCallback(async (d) => {
     try {
@@ -345,14 +363,14 @@ export default function Dashboard() {
                 boxShadow: tab === key ? `0 1px 3px rgba(0,0,0,0.06)` : 'none',
               }}>
                 {label}
-                {key === 'unibox' && unibox?.messages?.length > 0 && (
+                {key === 'unibox' && uniboxGroups.length > 0 && (
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     minWidth: 18, height: 18, borderRadius: 9,
                     background: t.primary, color: '#fff', fontSize: 10, fontWeight: 700,
                     marginLeft: 6, padding: '0 5px',
                   }}>
-                    {unibox.messages.length > 99 ? '99+' : unibox.messages.filter(m => m.isUnread).length || unibox.messages.length}
+                    {uniboxGroups.length > 99 ? '99+' : uniboxGroups.filter(g => g.hasUnread).length || uniboxGroups.length}
                   </span>
                 )}
               </button>
@@ -578,61 +596,65 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {unibox?.messages?.length > 0 && (
+              {uniboxGroups.length > 0 && (
                 <div style={{ maxHeight: 600, overflowY: 'auto' }}>
-                  {unibox.messages.map((m) => (
+                  {uniboxGroups.map((g) => (
                     <div
-                      key={m.id}
-                      onClick={() => openEmail(m.id)}
+                      key={g.sender}
+                      onClick={() => openThread(g.threadId, g.sender)}
                       style={{
                         display: 'block', color: 'inherit', cursor: 'pointer',
                         padding: '14px 16px', borderRadius: 8,
                         borderBottom: `0.5px solid ${t.borderLight}`,
-                        background: m.isUnread ? t.primaryLight : 'transparent',
+                        background: g.hasUnread ? t.primaryLight : 'transparent',
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={e => { if (!m.isUnread) e.currentTarget.style.background = t.borderLight; }}
-                      onMouseLeave={e => { if (!m.isUnread) e.currentTarget.style.background = 'transparent'; }}
+                      onMouseEnter={e => { if (!g.hasUnread) e.currentTarget.style.background = t.borderLight; }}
+                      onMouseLeave={e => { if (!g.hasUnread) e.currentTarget.style.background = 'transparent'; }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 4 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: t.textBody, marginBottom: 1 }}>
-                            {m.isUnread && <span style={{ width: 6, height: 6, borderRadius: '50%', background: t.primary, display: 'inline-block', marginRight: 6, verticalAlign: 'middle' }} />}
-                            {m.from}
-                          </div>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: t.textHeading, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {m.subject}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 1 }}>
+                            <span style={{
+                              width: 32, height: 32, borderRadius: '50%',
+                              background: g.hasUnread ? `linear-gradient(135deg, ${t.primary}, #764ba2)` : t.borderLight,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 13, fontWeight: 700, color: g.hasUnread ? '#fff' : t.textMuted,
+                              flexShrink: 0,
+                            }}>
+                              {(g.sender || '?')[0].toUpperCase()}
+                            </span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: t.textHeading }}>
+                                {g.hasUnread && <span style={{ width: 6, height: 6, borderRadius: '50%', background: t.primary, display: 'inline-block', marginRight: 6, verticalAlign: 'middle' }} />}
+                                {g.sender}
+                              </div>
+                              <div style={{ fontSize: 12, color: t.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {g.subject}
+                              </div>
+                            </div>
                           </div>
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ fontSize: 11, color: t.textMuted, whiteSpace: 'nowrap' }}>
-                            {new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {new Date(g.latest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </div>
-                          <div style={{ fontSize: 10, color: t.textFaint, marginTop: 1 }}>{m.eaccount}</div>
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            minWidth: 20, height: 20, borderRadius: 10, marginTop: 4,
+                            background: t.borderLight, fontSize: 10, fontWeight: 600,
+                            color: t.textMuted, padding: '0 6px',
+                          }}>
+                            {g.messages.length}
+                          </div>
                         </div>
                       </div>
                       <div style={{
                         fontSize: 12, color: t.textMuted, lineHeight: 1.4,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        maxWidth: '100%',
+                        maxWidth: '100%', marginTop: 2,
                       }}>
-                        {m.bodyPreview || '(no preview)'}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                        {m.isUnread && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: t.primary, background: t.primaryLight, padding: '1px 8px', borderRadius: 999 }}>New</span>
-                        )}
-                        {m.isAutoReply && (
-                          <span style={{ fontSize: 10, fontWeight: 500, color: t.amber, background: t.amberBg, padding: '1px 8px', borderRadius: 999 }}>Auto</span>
-                        )}
-                        {m.aiInterest > 0.5 && (
-                          <span style={{ fontSize: 10, fontWeight: 500, color: t.green, background: t.greenBg, padding: '1px 8px', borderRadius: 999 }}>Interested</span>
-                        )}
-                        {m.lead && (
-                          <span style={{ fontSize: 10, fontWeight: 500, color: t.textMuted, padding: '1px 8px', borderRadius: 999 }}>
-                            Lead: {m.lead}
-                          </span>
-                        )}
+                        {g.latest.bodyPreview || '(no preview)'}
                       </div>
                     </div>
                   ))}
@@ -644,10 +666,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ═══════ EMAIL MODAL ═══════ */}
-      {selectedEmail && (
+      {/* ═══════ THREAD MODAL ═══════ */}
+      {selectedThread && (
         <div
-          onClick={closeEmail}
+          onClick={closeThread}
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
             background: 'rgba(0,0,0,0.5)',
@@ -666,14 +688,14 @@ export default function Dashboard() {
             {/* Modal header */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '16px 20px', borderBottom: `0.5px solid ${t.borderLight}`,
+              padding: '14px 20px', borderBottom: `0.5px solid ${t.borderLight}`,
               position: 'sticky', top: 0, background: t.surface, zIndex: 1,
               borderTopLeftRadius: 14, borderTopRightRadius: 14,
             }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: t.textHeading }}>
-                {selectedEmail.subject || 'Email'}
+                {selectedThread.sender || 'Conversation'}
               </span>
-              <button onClick={closeEmail} style={{
+              <button onClick={closeThread} style={{
                 width: 28, height: 28, borderRadius: '50%', border: 'none',
                 background: t.borderLight, color: t.textMuted, cursor: 'pointer',
                 fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -682,92 +704,77 @@ export default function Dashboard() {
             </div>
 
             {/* Loading */}
-            {selectedEmail.loading && (
+            {selectedThread.loading && (
               <div style={{ textAlign: 'center', padding: '3rem', color: t.textMuted, fontSize: 13 }}>
-                Loading email...
+                Loading conversation...
               </div>
             )}
 
             {/* Error */}
-            {selectedEmail.error && (
+            {selectedThread.error && (
               <div style={{ padding: '2rem', textAlign: 'center', color: t.red, fontSize: 13 }}>
-                Failed to load email: {selectedEmail.error}
+                Failed to load thread: {selectedThread.error}
               </div>
             )}
 
-            {/* Email content */}
-            {selectedEmail.from && (
-              <div style={{ padding: '20px 24px' }}>
-                {/* Meta */}
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: t.textHeading, marginBottom: 2 }}>
-                        {selectedEmail.from}
-                      </div>
-                      <div style={{ fontSize: 12, color: t.textMuted }}>
-                        to {selectedEmail.to?.join(', ') || selectedEmail.eaccount}
-                        {selectedEmail.cc?.length > 0 && <span> · cc: {selectedEmail.cc.join(', ')}</span>}
-                      </div>
+            {/* Thread messages */}
+            {selectedThread.messages?.map((m, i) => (
+              <div key={m.id} style={{
+                padding: '16px 24px',
+                borderBottom: i < selectedThread.messages.length - 1 ? `0.5px solid ${t.borderLight}` : 'none',
+                background: m.isUnread ? t.primaryLight : 'transparent',
+              }}>
+                {/* Message header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: t.textHeading, marginBottom: 1 }}>
+                      {m.from}
                     </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 12, color: t.textMuted, whiteSpace: 'nowrap' }}>
-                        {new Date(selectedEmail.createdAt).toLocaleDateString('en-US', {
-                          weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
-                          hour: '2-digit', minute: '2-digit',
-                        })}
-                      </div>
-                      {selectedEmail.eaccount && (
-                        <div style={{ fontSize: 10, color: t.textFaint, marginTop: 2 }}>via {selectedEmail.eaccount}</div>
+                    <div style={{ fontSize: 11, color: t.textMuted }}>
+                      to {m.to?.join(', ') || m.eaccount}
+                      {m.cc?.length > 0 && <span> · cc: {m.cc.join(', ')}</span>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 11, color: t.textMuted, whiteSpace: 'nowrap' }}>
+                      {new Date(m.createdAt).toLocaleDateString('en-US', {
+                        weekday: 'short', month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', marginTop: 4 }}>
+                      {m.isAutoReply && (
+                        <span style={{ fontSize: 9, fontWeight: 500, color: t.amber, background: t.amberBg, padding: '1px 6px', borderRadius: 999 }}>Auto</span>
+                      )}
+                      {m.aiInterest > 0.5 && (
+                        <span style={{ fontSize: 9, fontWeight: 500, color: t.green, background: t.greenBg, padding: '1px 6px', borderRadius: 999 }}>Interest {(m.aiInterest * 100).toFixed(0)}%</span>
                       )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {selectedEmail.isUnread && (
-                      <span style={{ fontSize: 10, fontWeight: 600, color: t.primary, background: t.primaryLight, padding: '2px 8px', borderRadius: 999 }}>Unread</span>
-                    )}
-                    {selectedEmail.isAutoReply && (
-                      <span style={{ fontSize: 10, fontWeight: 500, color: t.amber, background: t.amberBg, padding: '2px 8px', borderRadius: 999 }}>Auto reply</span>
-                    )}
-                    {selectedEmail.aiInterest > 0.5 && (
-                      <span style={{ fontSize: 10, fontWeight: 500, color: t.green, background: t.greenBg, padding: '2px 8px', borderRadius: 999 }}>
-                        AI Interest: {(selectedEmail.aiInterest * 100).toFixed(0)}%
-                      </span>
-                    )}
-                    {selectedEmail.lead && (
-                      <span style={{ fontSize: 10, fontWeight: 500, color: t.textMuted, padding: '2px 8px', borderRadius: 999 }}>
-                        Lead: {selectedEmail.lead}
-                      </span>
-                    )}
-                  </div>
                 </div>
+
+                {/* Subject for first message */}
+                {i === 0 && m.subject && (
+                  <div style={{ fontSize: 12, fontWeight: 500, color: t.textMuted, marginBottom: 8 }}>
+                    Subject: {m.subject}
+                  </div>
+                )}
 
                 {/* Body */}
                 <div style={{
-                  borderTop: `0.5px solid ${t.borderLight}`,
-                  paddingTop: 20,
-                  lineHeight: 1.7,
-                  fontSize: 14,
-                  color: t.textBody,
+                  fontSize: 13, lineHeight: 1.65, color: t.textBody,
+                  wordBreak: 'break-word',
                 }}>
-                  {selectedEmail.bodyHtml ? (
-                    <div
-                      dangerouslySetInnerHTML={{ __html: selectedEmail.bodyHtml }}
-                      style={{
-                        wordBreak: 'break-word',
-                        overflowWrap: 'break-word',
-                      }}
-                    />
-                  ) : selectedEmail.bodyText ? (
-                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                      {selectedEmail.bodyText}
-                    </div>
+                  {m.bodyHtml ? (
+                    <div dangerouslySetInnerHTML={{ __html: m.bodyHtml }} style={{ wordBreak: 'break-word' }} />
+                  ) : m.bodyText ? (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{m.bodyText}</div>
                   ) : (
                     <div style={{ color: t.textMuted }}>(no content)</div>
                   )}
                 </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
       )}
