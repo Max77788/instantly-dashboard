@@ -65,6 +65,7 @@ export default async function handler(req, res) {
       createdAt: m.timestamp_created || m.timestamp_email || '',
       campaignId: m.campaign_id || '',
       type: m.ue_type === 1 ? 'sent' : m.ue_type === 3 ? 'received' : 'manual',
+      responseType: classifyResponse(m),
     }));
 
     return res.status(200).json({
@@ -75,4 +76,26 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
+}
+
+function classifyResponse(m) {
+  const interest = m.ai_interest_value || 0;
+  const isAuto = m.is_auto_reply === 1 || m.is_auto_reply === true;
+  const body = (m.content_preview || m.body_preview || (m.body?.text || '')).toLowerCase();
+  const subject = (m.subject || '').toLowerCase();
+
+  // Negative signals
+  const negativePatterns = [
+    'unsubscribe', 'opt out', 'opt-out', 'remove me', 'not interested',
+    'do not contact', 'stop emailing', 'take me off', 'no thanks',
+    "i'm not interested", 'leave me alone'
+  ];
+  const isNegative = negativePatterns.some(p => body.includes(p) || subject.includes(p));
+
+  if (isNegative) return 'negative';
+  if (isAuto) return 'auto';
+  if (interest >= 0.5) return 'positive';
+  if (interest > 0.2) return 'interested';
+  if (interest > 0) return 'neutral';
+  return 'unknown';
 }

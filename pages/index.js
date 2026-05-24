@@ -203,16 +203,29 @@ export default function Dashboard() {
     unibox.messages.forEach(m => {
       const key = m.from || 'unknown';
       if (!map[key]) {
-        map[key] = { sender: key, threadId: m.threadId, subject: m.subject, messages: [], latest: null, hasUnread: false };
+        map[key] = { sender: key, threadId: m.threadId, subject: m.subject, messages: [], latest: null, hasUnread: false, responseType: 'unknown' };
       }
       map[key].messages.push(m);
       if (!map[key].latest || new Date(m.createdAt) > new Date(map[key].latest.createdAt)) {
         map[key].latest = m;
+        map[key].responseType = m.responseType || 'unknown';
       }
       if (m.isUnread) map[key].hasUnread = true;
     });
     return Object.values(map).sort((a, b) => new Date(b.latest.createdAt) - new Date(a.latest.createdAt));
   }, [unibox]);
+
+  const responseLabel = (type) => {
+    const labels = {
+      positive:  { text: '🔥 POSITIVE', color: t.green, bg: t.greenBg, pulse: true },
+      interested:{ text: '👀 INTERESTED', color: t.amber, bg: t.amberBg, pulse: false },
+      neutral:   { text: 'NEUTRAL', color: t.textMuted, bg: t.borderLight, pulse: false },
+      auto:      { text: 'AUTO', color: '#6366f1', bg: 'rgba(99,102,241,0.10)', pulse: false },
+      negative:  { text: 'NEGATIVE', color: t.red, bg: t.redBg, pulse: false },
+      unknown:   { text: 'UNREAD', color: t.primary, bg: t.primaryLight, pulse: false },
+    };
+    return labels[type] || labels.unknown;
+  };
 
   const fetchData = useCallback(async (d) => {
     try {
@@ -579,6 +592,34 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {/* Response type summary bar */}
+              {uniboxGroups.length > 0 && (
+                <div style={{
+                  display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16,
+                  padding: '10px 14px', borderRadius: 10,
+                  background: t.borderLight,
+                }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4, display: 'flex', alignItems: 'center' }}>
+                    Breakdown
+                  </span>
+                  {['positive', 'interested', 'neutral', 'auto', 'negative', 'unknown'].map(type => {
+                    const count = uniboxGroups.filter(g => g.responseType === type).length;
+                    if (count === 0) return null;
+                    const lbl = responseLabel(type);
+                    return (
+                      <span key={type} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999,
+                        background: lbl.bg, color: lbl.color,
+                        ...(type === 'positive' ? { animation: 'pulse 2s infinite', boxShadow: `0 0 10px ${t.green}33` } : {}),
+                      }}>
+                        {lbl.text}: {count}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
               {uniboxLoading && !unibox && (
                 <div style={{ textAlign: 'center', padding: '3rem', color: t.textMuted, fontSize: 13 }}>Loading messages...</div>
               )}
@@ -614,6 +655,22 @@ export default function Dashboard() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 4 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                              background: responseLabel(g.responseType).bg,
+                              color: responseLabel(g.responseType).color,
+                              textTransform: 'uppercase', letterSpacing: '0.04em',
+                              whiteSpace: 'nowrap',
+                              ...(g.responseType === 'positive' ? {
+                                animation: 'pulse 2s infinite',
+                                boxShadow: `0 0 12px ${t.green}44`,
+                              } : {}),
+                            }}>
+                              {responseLabel(g.responseType).text}
+                            </span>
+                          </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 1 }}>
                             <span style={{
                               width: 32, height: 32, borderRadius: '50%',
@@ -745,6 +802,15 @@ export default function Dashboard() {
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', marginTop: 4 }}>
                       {m.isAutoReply && (
                         <span style={{ fontSize: 9, fontWeight: 500, color: t.amber, background: t.amberBg, padding: '1px 6px', borderRadius: 999 }}>Auto</span>
+                      )}
+                      {m.responseType && m.responseType !== 'unknown' && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
+                          background: responseLabel(m.responseType).bg,
+                          color: responseLabel(m.responseType).color,
+                        }}>
+                          {responseLabel(m.responseType).text}
+                        </span>
                       )}
                       {m.aiInterest > 0.5 && (
                         <span style={{ fontSize: 9, fontWeight: 500, color: t.green, background: t.greenBg, padding: '1px 6px', borderRadius: 999 }}>Interest {(m.aiInterest * 100).toFixed(0)}%</span>
