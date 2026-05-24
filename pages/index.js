@@ -38,6 +38,8 @@ const LIGHT = {
   labelMuted: '#9ca3af',
   kpiCardBg: '#fff',
   kpiCardBorder: '#e5e7eb',
+  surfaceSolid: '#fff',
+  highlightUnread: '#eef2ff',
 };
 
 const DARK = {
@@ -73,6 +75,8 @@ const DARK = {
   labelMuted: '#555',
   kpiCardBg: 'rgba(255,255,255,0.03)',
   kpiCardBorder: 'rgba(255,255,255,0.08)',
+  surfaceSolid: '#13131a',
+  highlightUnread: 'rgba(99,102,241,0.12)',
 };
 
 // ── Sub-components ──
@@ -737,7 +741,7 @@ export default function Dashboard() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: t.surface, border: `0.5px solid ${t.border}`,
+              background: t.surfaceSolid, border: `0.5px solid ${t.border}`,
               borderRadius: 14, width: '100%', maxWidth: 720, maxHeight: '85vh',
               overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
             }}
@@ -746,7 +750,7 @@ export default function Dashboard() {
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '14px 20px', borderBottom: `0.5px solid ${t.borderLight}`,
-              position: 'sticky', top: 0, background: t.surface, zIndex: 1,
+              position: 'sticky', top: 0, background: t.surfaceSolid, zIndex: 1,
               borderTopLeftRadius: 14, borderTopRightRadius: 14,
             }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: t.textHeading }}>
@@ -779,7 +783,7 @@ export default function Dashboard() {
               <div key={m.id} style={{
                 padding: '16px 24px',
                 borderBottom: i < selectedThread.messages.length - 1 ? `0.5px solid ${t.borderLight}` : 'none',
-                background: m.isUnread ? t.primaryLight : 'transparent',
+                background: m.isUnread ? t.highlightUnread : 'transparent',
               }}>
                 {/* Message header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
