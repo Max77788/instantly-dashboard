@@ -216,7 +216,9 @@ export default function Dashboard() {
       }
       if (m.isUnread) map[key].hasUnread = true;
     });
-    return Object.values(map).sort((a, b) => new Date(b.latest.createdAt) - new Date(a.latest.createdAt));
+    return Object.values(map)
+      .filter(g => !g.sender.toLowerCase().endsWith('@sunitausa.com'))
+      .sort((a, b) => new Date(b.latest.createdAt) - new Date(a.latest.createdAt));
   }, [unibox]);
 
   const responseLabel = (type) => {
