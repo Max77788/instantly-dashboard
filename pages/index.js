@@ -160,6 +160,7 @@ export default function Dashboard() {
   const [uniboxLoading, setUniboxLoading] = useState(false);
   const [selectedThread, setSelectedThread] = useState(null);
   const [threadLoading, setThreadLoading] = useState(false);
+  const [seenThreads, setSeenThreads] = useState(new Set());
 
   const t = dark ? DARK : LIGHT;
 
@@ -187,6 +188,7 @@ export default function Dashboard() {
     try {
       setThreadLoading(true);
       setSelectedThread({ threadId, sender, loading: true });
+      setSeenThreads(prev => new Set(prev).add(threadId));
       const res = await fetch(`/api/thread?thread_id=${encodeURIComponent(threadId)}`);
       if (!res.ok) throw new Error('Failed to fetch thread');
       const json = await res.json();
@@ -223,8 +225,9 @@ export default function Dashboard() {
     });
     return Object.values(map)
       .filter(g => g.sender && !g.sender.toLowerCase().endsWith('@sunitausa.com'))
+      .map(g => ({ ...g, hasUnread: g.hasUnread && !seenThreads.has(g.threadId) }))
       .sort((a, b) => new Date(b.latest.createdAt) - new Date(a.latest.createdAt));
-  }, [unibox]);
+  }, [unibox, seenThreads]);
 
   const responseLabel = (type) => {
     const labels = {
@@ -771,7 +774,7 @@ export default function Dashboard() {
               <div key={m.id} style={{
                 padding: '16px 24px',
                 borderBottom: i < selectedThread.messages.length - 1 ? `0.5px solid ${t.borderLight}` : 'none',
-                background: m.isUnread ? t.highlightUnread : 'transparent',
+                background: (m.isUnread && !seenThreads.has(selectedThread.threadId)) ? t.highlightUnread : 'transparent',
               }}>
                 {/* Message header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
