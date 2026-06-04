@@ -28,33 +28,19 @@ export default async function handler(req, res) {
       return res.status(200).json({ messages: [], accounts: [], updated: new Date().toISOString() });
     }
 
-    // 2. Fetch ALL emails (read + unread) via parallel requests
-    const [unreadRes, readRes] = await Promise.all([
-      fetch(`https://api.instantly.ai/api/v2/emails?limit=100&sort_order=desc&is_unread=1`, { headers }),
-      fetch(`https://api.instantly.ai/api/v2/emails?limit=100&sort_order=desc&is_unread=0`, { headers }),
-    ]);
+    // 2. Fetch emails with larger limit to capture both read & unread
+    const emailRes = await fetch(
+      `https://api.instantly.ai/api/v2/emails?limit=500&sort_order=desc`,
+      { headers }
+    );
 
-    if (!unreadRes.ok) {
-      const text = await unreadRes.text();
-      return res.status(502).json({ error: `Emails API error (${unreadRes.status}): ${text}` });
-    }
-    if (!readRes.ok) {
-      const text = await readRes.text();
-      return res.status(502).json({ error: `Emails API error (${readRes.status}): ${text}` });
+    if (!emailRes.ok) {
+      const text = await emailRes.text();
+      return res.status(502).json({ error: `Emails API error (${emailRes.status}): ${text}` });
     }
 
-    const unreadData = await unreadRes.json();
-    const readData = await readRes.json();
-
-    // Merge and dedupe by email id
-    const seenIds = new Set();
-    const raw = [];
-    for (const m of [...(unreadData.items || []), ...(readData.items || [])]) {
-      if (!seenIds.has(m.id)) {
-        seenIds.add(m.id);
-        raw.push(m);
-      }
-    }
+    const emailData = await emailRes.json();
+    const raw = emailData.items || [];
 
     const messages = raw
       .filter(m => {
