@@ -200,14 +200,14 @@ export default function Dashboard() {
 
   const closeThread = () => setSelectedThread(null);
 
-  // Group unibox messages by sender
+  // Group unibox messages by thread — only show threads with at least 1 non-Sunita message
   const uniboxGroups = useMemo(() => {
     if (!unibox?.messages) return [];
     const map = {};
     unibox.messages.forEach(m => {
-      const key = m.from || 'unknown';
+      const key = m.threadId || 'unknown';
       if (!map[key]) {
-        map[key] = { sender: key, threadId: m.threadId, subject: m.subject, messages: [], latest: null, hasUnread: false, responseType: 'unknown' };
+        map[key] = { sender: '', threadId: m.threadId, subject: m.subject, messages: [], latest: null, hasUnread: false, responseType: 'unknown' };
       }
       map[key].messages.push(m);
       if (!map[key].latest || new Date(m.createdAt) > new Date(map[key].latest.createdAt)) {
@@ -215,9 +215,14 @@ export default function Dashboard() {
         map[key].responseType = m.responseType || 'unknown';
       }
       if (m.isUnread) map[key].hasUnread = true;
+      // Capture the lead (non-Sunita) sender
+      const from = (m.from || '').toLowerCase();
+      if (from && !from.endsWith('@sunitausa.com')) {
+        map[key].sender = m.from;
+      }
     });
     return Object.values(map)
-      .filter(g => !g.sender.toLowerCase().endsWith('@sunitausa.com'))
+      .filter(g => g.sender && !g.sender.toLowerCase().endsWith('@sunitausa.com'))
       .sort((a, b) => new Date(b.latest.createdAt) - new Date(a.latest.createdAt));
   }, [unibox]);
 
