@@ -422,7 +422,7 @@ export default function Dashboard() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 500 }}>
                   <thead>
                     <tr>
-                      {['Leads', 'Sent', 'Replies', 'Bounced', 'OPP', '% Replied'].map(h => (
+                      {['Sent', 'Replies', 'Bounced', 'OPP', '% Replied'].map(h => (
                         <th key={h} style={{
                           textAlign: 'left', padding: '8px 12px',
                           borderBottom: `1px solid ${t.borderLight}`,
@@ -434,9 +434,6 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td style={{ padding: '14px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: t.textBody }}>
-                        {fmt(stats.contacted)}
-                      </td>
                       <td style={{ padding: '14px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", color: t.textBody }}>
                         {fmt(stats.emailsSent)}
                       </td>
@@ -497,7 +494,7 @@ export default function Dashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
                     <thead>
                       <tr>
-                        {['Segment', 'Status', 'Leads', 'Sent', 'Replies', 'Bounced', 'OPP', '% Replied'].map(h => (
+                        {['Segment', 'Status', 'Sent', 'Replies', 'Bounced', 'OPP', '% Replied'].map(h => (
                           <th key={h} style={{
                             textAlign: 'left', padding: '8px 12px',
                             borderBottom: `1px solid ${t.borderLight}`,
@@ -527,7 +524,6 @@ export default function Dashboard() {
                               <span style={{ color: t.textMuted, fontWeight: 500 }}>—</span>
                             )}
                           </td>
-                          <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.leads)}</td>
                           <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.sent)}</td>
                           <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.replies)}</td>
                           <td style={{ padding: '12px 12px', borderBottom: `0.5px solid ${t.borderLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: t.textBody }}>{fmt(s.bounced)}</td>
