@@ -24,11 +24,11 @@ export default async function handler(req, res) {
     const listData = await listRes.json();
     const allCampaigns = listData.items || [];
 
-    // Filter to Sunita campaigns, excluding test campaigns
+    // Filter to campaigns containing "SHI " (with trailing space), exclude test
     const campaigns = allCampaigns.filter(c => {
       const name = (c.name || '').toUpperCase();
       if (name.includes('SHITEST')) return false;
-      return name.includes('SUNIT') || name.includes('SHI');
+      return name.includes('SHI ');
     });
 
     if (campaigns.length === 0) {
