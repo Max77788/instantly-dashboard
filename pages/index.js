@@ -607,44 +607,6 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* ═══════ SECTION 5 — Mailbox Access for Carl ═══════ */}
-              <div style={{
-                background: t.surface, border: `0.5px solid ${t.border}`,
-                borderRadius: 14, padding: '20px 24px', marginBottom: '1.25rem',
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: t.textBody, marginBottom: 10 }}>
-                  Mailbox Access
-                  <span style={{ fontSize: 10, color: t.textMuted, marginLeft: 8, fontWeight: 400 }}>for Carl — click to open Instantly</span>
-                </div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <a href="https://app.instantly.ai/app/accounts" target="_blank" rel="noopener noreferrer" style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '10px 18px', borderRadius: 10,
-                    background: t.primaryLight, color: t.primary,
-                    fontWeight: 600, fontSize: 13, textDecoration: 'none',
-                    border: `0.5px solid ${t.primary}33`,
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                    All Instantly Accounts
-                  </a>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 10,
-                    background: '#e6fcf5', color: '#0ca678', fontWeight: 600, fontSize: 13,
-                    border: `0.5px solid #0ca67833` }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ca678' }} />
-                    Olivia
-                  </span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 10,
-                    background: '#fff4e6', color: '#f76707', fontWeight: 600, fontSize: 13,
-                    border: `0.5px solid #f7670733` }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f76707' }} />
-                    Mike
-                  </span>
-                </div>
-                <div style={{ fontSize: 11, color: t.textMuted, marginTop: 8 }}>
-                  Username + password credentials shared separately. Login at app.instantly.ai
-                </div>
-              </div>
-
               {/* ── Footer ── */}
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
