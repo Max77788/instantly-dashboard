@@ -24,9 +24,10 @@ export default async function handler(req, res) {
     const listData = await listRes.json();
     const allCampaigns = listData.items || [];
 
-    // Filter to Sunita campaigns (SHI prefix or Sunita in name)
+    // Filter to Sunita campaigns, excluding test campaigns
     const campaigns = allCampaigns.filter(c => {
       const name = (c.name || '').toUpperCase();
+      if (name.includes('SHITEST')) return false;
       return name.includes('SUNIT') || name.includes('SHI');
     });
 
