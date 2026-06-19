@@ -24,50 +24,27 @@ export default async function handler(req, res) {
     const listData = await listRes.json();
     const allCampaigns = listData.items || [];
 
-    // Filter to only campaigns with "SHI " (including the space) in the name
-    const campaigns = allCampaigns.filter(c =>
-      (c.name || '').toUpperCase().includes('SHI ')
-    );
+    // Filter to Sunita campaigns (SHI prefix or Sunita in name)
+    const campaigns = allCampaigns.filter(c => {
+      const name = (c.name || '').toUpperCase();
+      return name.includes('SUNIT') || name.includes('SHI');
+    });
 
     if (campaigns.length === 0) {
-      return res.status(200).json({ stats: null, daily: [], segments: [], updated: new Date().toISOString() });
+      // No filter matched — fall back to all active campaigns
+      const active = allCampaigns.filter(c => c.status === 1);
+      if (active.length === 0) {
+        return res.status(200).json({ stats: null, daily: [], segments: [], updated: new Date().toISOString() });
+      }
+      campaigns.push(...active);
     }
 
     const ids = campaigns.map(c => c.id);
 
-    // 2. Fetch per-campaign analytics — try POST (original working approach) first, then GET fallback
+    // 2. Fetch per-campaign analytics via individual GET calls (POST summary endpoint is dead as of June 2026)
     let analyticsArr = [];
 
-    // Approach A: POST /api/v2/analytics/campaign/summary (was working originally)
-    try {
-      const postRes = await fetch('https://api.instantly.ai/api/v2/analytics/campaign/summary', {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaign_ids: ids }),
-      });
-      if (postRes.ok) {
-        const data = await postRes.json();
-        analyticsArr = Array.isArray(data) ? data : [];
-      }
-    } catch {}
-
-    // Approach B: Fallback — GET /api/v2/campaigns/analytics?ids=... (newer endpoint)
-    if (analyticsArr.length === 0) {
-      try {
-        const params = ids.map(id => `ids=${encodeURIComponent(id)}`).join('&');
-        const getRes = await fetch(
-          `https://api.instantly.ai/api/v2/campaigns/analytics?${params}`,
-          { headers }
-        );
-        if (getRes.ok) {
-          const data = await getRes.json();
-          analyticsArr = Array.isArray(data) ? data : [];
-        }
-      } catch {}
-    }
-
-    // Approach C: Fallback — individual GET calls
-    if (analyticsArr.length === 0 && ids.length > 0) {
+    if (ids.length > 0) {
       try {
         const results = await Promise.all(
           ids.map(async (id) => {

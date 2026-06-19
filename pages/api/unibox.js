@@ -28,12 +28,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ messages: [], accounts: [], updated: new Date().toISOString() });
     }
 
-    // 2. Fetch read + unread emails via parallel requests
-    //    is_unread is a boolean — must be "true"/"false" strings
-    //    limit max is 100 per Instantly docs
+    // 2. Fetch read + unread emails via parallel requests (max 250 per call)
     const [unreadRes, readRes] = await Promise.all([
-      fetch(`https://api.instantly.ai/api/v2/emails?limit=100&sort_order=desc&is_unread=true`,  { headers }),
-      fetch(`https://api.instantly.ai/api/v2/emails?limit=100&sort_order=desc&is_unread=false`, { headers }),
+      fetch(`https://api.instantly.ai/api/v2/emails?limit=250&sort_order=desc&is_unread=true`,  { headers }),
+      fetch(`https://api.instantly.ai/api/v2/emails?limit=250&sort_order=desc&is_unread=false`, { headers }),
     ]);
 
     if (!unreadRes.ok) {
